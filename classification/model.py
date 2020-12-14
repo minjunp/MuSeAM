@@ -97,12 +97,11 @@ class ConvolutionLayer(Conv1D):
         return outputs
 
 class nn_model:
-    def __init__(self, fasta_file, readout_file, filters, kernel_size, pool_type, pool, regularizer, activation_type, epochs, batch_size):
+    def __init__(self, fasta_file, readout_file, filters, kernel_size, pool_type, regularizer, activation_type, epochs, batch_size):
         """initialize basic parameters"""
         self.filters = filters
         self.kernel_size = kernel_size
         self.pool_type = pool_type
-        self.pool = pool
         self.regularizer = regularizer
         self.activation_type = activation_type
         self.epochs = epochs
@@ -150,19 +149,19 @@ class nn_model:
         #first_layer = Conv1D(filters=self.filters, kernel_size=self.kernel_size, kernel_initializer = my_init, data_format='channels_last', input_shape=(dim_num[1],dim_num[2]), use_bias = False, trainable=False)
         first_layer = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', use_bias = True)
 
-
         fw = first_layer(forward)
         bw = first_layer(reverse)
 
         concat_relu = concatenate([fw, bw], axis=1)
+        pool_size_input = concat_relu.shape[1]
 
         #concat_relu = ReLU()(concat)
         #concat_relu = Dense(1, activation= 'sigmoid')(concat)
 
         if self.pool_type == 'Max':
-            pool_layer = MaxPooling1D(pool_size=self.pool)(concat_relu)
+            pool_layer = MaxPooling1D(pool_size=pool_size_input)(concat_relu)
         elif self.pool_type == 'Ave':
-            pool_layer = AveragePooling1D(pool_size=self.pool)(concat_relu)
+            pool_layer = AveragePooling1D(pool_size=pool_size_input)(concat_relu)
         elif self.pool_type == 'custom':
 
             def out_shape(input_shape):
@@ -366,7 +365,7 @@ class nn_model:
 
         # Save the entire model as a SavedModel.
         #model.save('my_model')
-        # Save weights only
+        # Save weights only: later used in self.filter_importance()
         #model.save_weights('./my_checkpoint')
 
         pred_train = model.predict({'forward': x1_train, 'reverse': x2_train})

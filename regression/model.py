@@ -145,12 +145,15 @@ class nn_model:
 
         concat = concatenate([fw, bw], axis=1)
 
+        pool_size_input = concat_relu.shape[1]
+        #concat_relu = Dense(1, activation= 'sigmoid')(concat)
+
         concat_relu = ReLU()(concat)
 
         if self.pool_type == 'Max':
-            pool_layer = MaxPooling1D(pool_size=self.pool)(concat_relu)
+            pool_layer = MaxPooling1D(pool_size=pool_size_input)(concat_relu)
         elif self.pool_type == 'Ave':
-            pool_layer = AveragePooling1D(pool_size=self.pool)(concat_relu)
+            pool_layer = AveragePooling1D(pool_size=pool_size_input)(concat_relu)
         elif self.pool_type == 'custom':
 
             def out_shape(input_shape):

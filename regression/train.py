@@ -15,7 +15,6 @@ def train(file_name):
     # change string values to integer values
     dict["filters"] = int(dict["filters"])
     dict["kernel_size"] = int(dict["kernel_size"])
-    dict["pool"] = int(dict["pool"])
     dict["epochs"] = int(dict["epochs"])
     dict["batch_size"] = int(dict["batch_size"])
 
@@ -38,7 +37,7 @@ def main(argv = None):
 
     dict = train(parameter_file)
 
-    model = nn_model(fasta_file, readout_file, filters=dict["filters"], kernel_size=dict["kernel_size"], pool_type=dict["pool_type"], pool=dict["pool"], regularizer=dict["regularizer"],
+    model = nn_model(fasta_file, readout_file, filters=dict["filters"], kernel_size=dict["kernel_size"], pool_type=dict["pool_type"], regularizer=dict["regularizer"],
             activation_type=dict["activation_type"], epochs=dict["epochs"], batch_size=dict["batch_size"])
 
     #model.eval()
