@@ -1,0 +1,8 @@
+filters 16
+kernel_size 12
+pool_type Max
+pool 234
+regularizer L_1
+activation_type linear
+epochs 30
+batch_size 64
