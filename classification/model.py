@@ -11,6 +11,9 @@ import pandas
 import sklearn
 import pandas as pd
 
+from hyperopt import fmin
+from hyperopt import hp
+from hyperopt import tpe
 
 # specifically for model visualization
 import keras
@@ -114,6 +117,7 @@ class nn_model:
         self.eval()
         #self.filter_importance()
         #self.cross_val_custom()
+        #self.hyperopt_tuner()
 
     def create_model(self):
         # different metric functions
@@ -424,6 +428,63 @@ class nn_model:
         auc_score = sklearn.metrics.roc_auc_score(y1_test, pred)
         print('test-set auc score is: ' + str(auc_score))
         print('test-set seed number is: ' + str(seed))
+
+    def hyperopt_tuner(self):
+        def objective(param):
+            prep = preprocess(self.fasta_file, self.readout_file)
+
+            # if want mono-nucleotide sequences
+            dict = prep.one_hot_encode()
+
+            # if want dinucleotide sequences
+            # dict = prep.dinucleotide_encode()
+
+            # print maximum length without truncation
+            np.set_printoptions(threshold=sys.maxsize)
+
+            fw_fasta = dict["forward"]
+            rc_fasta = dict["reverse"]
+            readout = dict["readout"]
+
+            seed = random.randint(1,1000)
+
+            x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.1, random_state=seed)
+            # split for reverse complemenet sequences
+            x2_train, x2_test, y2_train, y2_test = train_test_split(rc_fasta, readout, test_size=0.1, random_state=seed)
+            #assert x1_test == x2_test
+            #assert y1_test == y2_test
+
+            model = self.create_model()
+
+
+            # change from list to numpy array
+            y1_train = np.asarray(y1_train)
+            y1_test = np.asarray(y1_test)
+            y2_train = np.asarray(y2_train)
+            y2_test = np.asarray(y2_test)
+
+            # if we want to merge two training dataset
+            # comb = np.concatenate((y1_train, y2_train))
+
+            # train the data
+            model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
+
+            history2 = model.evaluate({'forward': x1_test, 'reverse': x2_test}, y1_test)
+
+            return history2[0]
+
+        parameter=dict(kernel_size=hp.choice('kernel_size',[12, 16]),
+                       batch_size=hp.choice('batch_size',[512]),
+                       epochs=hp.choice('epochs',[30,40,50]),
+                       filters=hp.choice('filters',[16, 256]))
+
+        # calling the hyperopt function and setting the maximum iteration to 100
+        best_params=fmin(objective,
+                         parameter,
+                         algo=tpe.suggest,
+                         max_evals=5)
+
+        print(best_params)
 
     def cross_val_custom(self):
         # so that we get different metrics used in this custom version
