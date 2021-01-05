@@ -114,8 +114,8 @@ class nn_model:
         self.fasta_file = fasta_file
         self.readout_file = readout_file
 
-        self.eval()
-        #self.filter_importance()
+        #self.eval()
+        self.filter_importance()
         #self.cross_val_custom()
         #self.hyperopt_tuner()
 
@@ -375,11 +375,10 @@ class nn_model:
 
         # train the data
         model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
-        # Save the entire model as a SavedModel.
-        #model.save('my_model')
+        ## Save the entire model as a SavedModel.
+        ##model.save('my_model')
         # Save weights only: later used in self.filter_importance()
-        #model.save_weights('./my_checkpoint')
-        # res[0] is same as learned_weight
+        model.save_weights('./my_checkpoint')
 
         # save each convolution learned filters as txt file
         motif_weight = model.get_weights()
