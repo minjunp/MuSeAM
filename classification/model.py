@@ -114,8 +114,8 @@ class nn_model:
         self.fasta_file = fasta_file
         self.readout_file = readout_file
 
-        #self.eval()
-        self.filter_importance()
+        self.eval()
+        #self.filter_importance()
         #self.cross_val_custom()
         #self.hyperopt_tuner()
 
