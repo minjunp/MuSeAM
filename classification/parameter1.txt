@@ -1,4 +1,4 @@
-filters 16
+filters 128
 kernel_size 12
 pool_type Max
 regularizer L_1
