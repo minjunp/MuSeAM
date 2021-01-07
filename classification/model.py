@@ -1,15 +1,18 @@
-from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import KFold
 import numpy as np
+from numpy import newaxis
+import pandas as pd
 import sys
 import math
 import os
 import json
 import csv
 import pandas
-import sklearn
-import pandas as pd
+import random
+import scipy
+import matplotlib.pyplot as plt
+
+from data_preprocess import preprocess
+from scipy.stats import spearmanr, pearsonr
 
 from hyperopt import fmin
 from hyperopt import hp
@@ -17,39 +20,27 @@ from hyperopt import tpe
 
 # specifically for model visualization
 import keras
-#import pydot as pyd
-
 from keras.utils.vis_utils import model_to_dot
+from keras.utils.vis_utils import plot_model
+from keras.models import Model
 
+import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, AveragePooling1D, BatchNormalization, Activation, concatenate, ReLU
-#import keras
-#from keras.utils.generic_utils import get_custom_objects
+from tensorflow.keras import backend as K, regularizers
 from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
-from keras.utils.vis_utils import plot_model
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import KFold
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
-from tensorflow.keras import backend as K
-from sklearn.metrics import r2_score
-from tensorflow.keras import regularizers
-from sklearn.model_selection import train_test_split
-import tensorflow as tf
-#from tensorflow.nn import avg_pool1d
-from scipy.stats import spearmanr, pearsonr
-import scipy
-
-import matplotlib.pyplot as plt
-
-from data_preprocess import preprocess
-from sklearn.utils import shuffle
-import random
+from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import Lambda
 from tensorflow import keras
-from keras.models import Model
-from numpy import newaxis
+
+import sklearn
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import r2_score
+from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
+from sklearn.model_selection import cross_val_score, KFold
 
 class ConvolutionLayer(Conv1D):
     def __init__(self, filters,
@@ -114,8 +105,8 @@ class nn_model:
         self.fasta_file = fasta_file
         self.readout_file = readout_file
 
-        self.eval()
-        #self.filter_importance()
+        #self.eval()
+        self.filter_importance()
         #self.cross_val_custom()
         #self.hyperopt_tuner()
 
@@ -255,17 +246,83 @@ class nn_model:
 
         model = self.create_model()
 
+
+        # change from list to numpy array
+        y1_train = np.asarray(y1_train)
+        y1_test = np.asarray(y1_test)
+        y2_train = np.asarray(y2_train)
+        y2_test = np.asarray(y2_test)
+
+        # Copy the original target values for later uses
+        y1_train_orig = y1_train.copy()
+        y1_test_orig = y1_test.copy()
+
+        # if we want to merge two training dataset
+        # comb = np.concatenate((y1_train, y2_train))
+
+        ## Change it to categorical values
+        y1_train = keras.utils.to_categorical(y1_train, 2)
+        y1_test = keras.utils.to_categorical(y1_test, 2)
+
         # Restore the weights
+        weight_dir = './data/E13RACtrlF1_E13RAMutF1_DMR_toppos2000/checkpoint/my_checkpoint'
         train_afters = []
         test_afters = []
         for i in range(self.filters):
-            model.load_weights('./my_checkpoint')
+            model.load_weights(weight_dir)
             weights = model.get_weights()
 
-            zeros = np.zeros((12,4))
+            #zeros = np.zeros((12,4))
             #weights[0][:,:,i] = zeros
 
             #model.set_weights(weights)
+            pred_train = model.predict({'forward': x1_train, 'reverse': x2_train})
+
+            # See which label has the highest confidence value
+            predictions_train = np.argmax(pred_train, axis=1)
+
+            print(y1_train_orig[0:10])
+            print(predictions_train[0:10])
+
+            true_pred = 0
+            false_pred = 0
+            for count, value in enumerate(predictions_train):
+                if y1_train_orig[count] == predictions_train[count]:
+                    true_pred += 1
+                else:
+                    false_pred += 1
+            print('Total number of train-set predictions is: ' + str(len(y1_train_orig)))
+            print('Number of correct train-set predictions is: ' + str(true_pred))
+            print('Number of incorrect train-set predictions is: ' + str(false_pred))
+
+            # Compute Area Under the Receiver Operating Characteristic Curve (ROC AUC) from prediction scores.
+            # Returns AUC
+            auc_score = sklearn.metrics.roc_auc_score(y1_train_orig, predictions_train)
+            print('train-set auc score is: ' + str(auc_score))
+            print('train-set seed number is: ' + str(seed))
+
+            ##########################################################
+            # Apply on test data
+            pred_test = model.predict({'forward': x1_test, 'reverse': x2_test})
+            # See which label has the highest confidence value
+            predictions_test = np.argmax(pred_test, axis=1)
+
+            true_pred = 0
+            false_pred = 0
+            for count, value in enumerate(predictions_test):
+                if y1_test_orig[count] == predictions_test[count]:
+                    true_pred += 1
+                else:
+                    false_pred += 1
+            print('Total number of test-set predictions is: ' + str(len(y1_test_orig)))
+            print('Number of correct test-set predictions is: ' + str(true_pred))
+            print('Number of incorrect test-set predictions is: ' + str(false_pred))
+
+            auc_score = sklearn.metrics.roc_auc_score(y1_test_orig, predictions_test)
+            print('test-set auc score is: ' + str(auc_score))
+            print('test-set seed number is: ' + str(seed))
+
+            sys.exit()
 
             pred_train = model.predict({'forward': x1_train, 'reverse': x2_train})
             vals = []
