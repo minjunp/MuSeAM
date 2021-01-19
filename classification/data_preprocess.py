@@ -1,5 +1,7 @@
 import sys
 import numpy as np
+from sequence_transform import read_fasta_into_list
+
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from dinucleotide import mono_to_dinucleotide, dinucleotide_one_hot_encode
 
@@ -16,7 +18,7 @@ class preprocess:
         #self.augment()
         #self.one_hot_encode()
 
-    def read_fasta_into_list(self, drop_N = True):
+    def read_fasta_into_list_old_version(self, drop_N = True):
     	all_seqs = []
     	cur_seq = ""
     	with open(self.fasta_file, "r") as f:
@@ -64,7 +66,7 @@ class preprocess:
             rc_seq = ''.join([rc_dict[c] for c in seq[::-1]])
             return rc_seq
 
-        seqn = self.read_fasta_into_list()
+        seqn = read_fasta_into_list(self.fasta_file)
         all_sequences = []
         for seq in range(len(seqn)):
             all_sequences.append(rc_comp(seqn[seq]))
@@ -82,7 +84,7 @@ class preprocess:
         return all_readout
 
     def augment(self):
-        new_fasta = self.read_fasta_into_list()
+        new_fasta = read_fasta_into_list(self.fasta_file)
         rc_fasta = self.rc_comp2()
         readout = self.read_readout()
 
@@ -90,7 +92,7 @@ class preprocess:
         return dict
 
     def without_augment(self):
-        new_fasta = self.read_fasta_into_list()
+        new_fasta = read_fasta_into_list(self.fasta_file)
         readout = self.read_readout()
 
         dict = {"new_fasta": new_fasta, "readout":readout}
@@ -176,7 +178,7 @@ class preprocess:
         return dict
 
     def dinucleotide_encode(self):
-        new_fasta = self.read_fasta_into_list()
+        new_fasta = read_fasta_into_list(self.fasta_file)
         sequences = mono_to_dinucleotide(new_fasta)
 
         input_features = dinucleotide_one_hot_encode(sequences)
