@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from sequence_transform import read_fasta_into_list
+from preprocess_sequence import read_fasta_into_list
 
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from dinucleotide import mono_to_dinucleotide, dinucleotide_one_hot_encode
