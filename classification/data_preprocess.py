@@ -1,50 +1,33 @@
 import sys
 import numpy as np
-from preprocess_sequence import read_fasta_into_list
-
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from dinucleotide import mono_to_dinucleotide, dinucleotide_one_hot_encode
+
 
 class preprocess:
     def __init__(self, fasta_file, readout_file):
         self.fasta_file = fasta_file
         self.readout_file = readout_file
 
-        #self.read_fasta_into_list()
-        #self.read_fasta_forward()
-        #self.rc_comp2()
-        #self.read_readout()
-        #self.without_augment()
-        #self.augment()
-        #self.one_hot_encode()
+        # self.read_fasta_into_list()
+        # self.read_fasta_forward()
+        # self.rc_comp2()
+        # self.read_readout()
+        # self.without_augment()
+        # self.augment()
+        # self.one_hot_encode()
 
-    def read_fasta_into_list_old_version(self, drop_N = True):
-    	all_seqs = []
-    	cur_seq = ""
-    	with open(self.fasta_file, "r") as f:
-    		for line in f:
-    			line = line.strip()
-    			if line == "":
-    				continue
-    			line = line.upper()
-    			if line[0] == '>':
-    				if len(cur_seq) > 0:
-    					if drop_N == True and cur_seq.find('N') >= 0:
-    						cur_seq = ""
-    					else:
-    						all_seqs.append(cur_seq)
-    						cur_seq = ""
-    				continue
-    			else:
-    				cur_seq += line
-    	if len(cur_seq) > 0:
-    		if drop_N == True and cur_seq.find('N') >= 0:
-    			cur_seq = ""
-    		else:
-    			all_seqs.append(cur_seq)
-    			cur_seq = ""
-
-    	return all_seqs
+    def read_fasta_into_list(self):
+        all_seqs = []
+        with open(self.fasta_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                line = line.upper()
+                if line[0] == '>':
+                    continue
+                else:
+                    all_seqs.append(line)
+        return all_seqs
 
     def read_fasta_forward(self):
         # get sequences and remove other information
@@ -62,16 +45,16 @@ class preprocess:
     def rc_comp2(self):
 
         def rc_comp(seq):
-            rc_dict = {'A':'T', 'C':'G', 'G':'C', 'T':'A'}
+            rc_dict = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
             rc_seq = ''.join([rc_dict[c] for c in seq[::-1]])
             return rc_seq
 
-        seqn = read_fasta_into_list(self.fasta_file)
+        seqn = self.read_fasta_into_list()
         all_sequences = []
         for seq in range(len(seqn)):
             all_sequences.append(rc_comp(seqn[seq]))
 
-        #return all_sequences
+        # return all_sequences
 
         return all_sequences
 
@@ -84,22 +67,26 @@ class preprocess:
         return all_readout
 
     def augment(self):
-        new_fasta = read_fasta_into_list(self.fasta_file)
+        new_fasta = self.read_fasta_into_list()
         rc_fasta = self.rc_comp2()
         readout = self.read_readout()
 
-        dict = {"new_fasta": new_fasta, "readout":readout, "rc_fasta": rc_fasta}
+        dict = {
+            "new_fasta": new_fasta,
+            "readout": readout,
+            "rc_fasta": rc_fasta}
         return dict
 
     def without_augment(self):
-        new_fasta = read_fasta_into_list(self.fasta_file)
+        new_fasta = self.read_fasta_into_list()
         readout = self.read_readout()
 
-        dict = {"new_fasta": new_fasta, "readout":readout}
+        dict = {"new_fasta": new_fasta, "readout": readout}
         return dict
 
     def one_hot_encode(self):
-        # The LabelEncoder encodes a sequence of bases as a sequence of integers.
+        # The LabelEncoder encodes a sequence of bases as a sequence of
+        # integers.
         integer_encoder = LabelEncoder()
         # The OneHotEncoder converts an array of integers to a sparse matrix where
         # each row corresponds to one possible value of each feature.
@@ -128,11 +115,11 @@ class preprocess:
         for i in range(len(forward)):
             length = len(forward[i])
             lengths.append(length)
-        max_length = max(lengths) # get the maxmimum length of all sequences
+        max_length = max(lengths)  # get the maxmimum length of all sequences
 
         for i in range(len(forward)):
             while (len(forward[i]) < max_length):
-                forward[i] = np.vstack((forward[i], [0,0,0,0]))
+                forward[i] = np.vstack((forward[i], [0, 0, 0, 0]))
 
         # remove first 4 nucleotides
         features = []
@@ -160,11 +147,11 @@ class preprocess:
         for i in range(len(reverse)):
             length = len(reverse[i])
             lengths.append(length)
-        max_length = max(lengths) # get the maxmimum length of all sequences
+        max_length = max(lengths)  # get the maxmimum length of all sequences
 
         for i in range(len(reverse)):
             while (len(reverse[i]) < max_length):
-                reverse[i] = np.vstack((reverse[i], [0,0,0,0]))
+                reverse[i] = np.vstack((reverse[i], [0, 0, 0, 0]))
 
         # remove first 4 nucleotides
         features = []
@@ -178,7 +165,7 @@ class preprocess:
         return dict
 
     def dinucleotide_encode(self):
-        new_fasta = read_fasta_into_list(self.fasta_file)
+        new_fasta = self.read_fasta_into_list()
         sequences = mono_to_dinucleotide(new_fasta)
 
         input_features = dinucleotide_one_hot_encode(sequences)
