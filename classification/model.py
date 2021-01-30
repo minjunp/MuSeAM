@@ -105,8 +105,8 @@ class nn_model:
         self.fasta_file = fasta_file
         self.readout_file = readout_file
 
-        #self.eval()
-        self.filter_importance()
+        self.eval()
+        #self.filter_importance()
         #self.cross_val_custom()
         #self.hyperopt_tuner()
 
@@ -265,126 +265,92 @@ class nn_model:
         y1_test = keras.utils.to_categorical(y1_test, 2)
 
         # Restore the weights
-        weight_dir = './data/E13RACtrlF1_E13RAMutF1_DMR_toppos2000/checkpoint/my_checkpoint'
+        #weight_dir = './data/E13RACtrlF1_E13RAMutF1_DMR_toppos2000/checkpoint/my_checkpoint'
+        weight_dir = './data/E13RACtrlF1_E13RAMutF1_DMR_topneg2000/checkpoint/my_checkpoint'
+
         train_afters = []
         test_afters = []
+
+        model.load_weights(weight_dir)
+
+        #######*******************************
+        pred_train = model.predict({'forward': x1_train, 'reverse': x2_train})
+
+        # See which label has the highest confidence value
+        predictions_train = np.argmax(pred_train, axis=1)
+
+        print(y1_train_orig[0:10])
+        print(predictions_train[0:10])
+
+        true_pred = 0
+        false_pred = 0
+        for count, value in enumerate(predictions_train):
+            if y1_train_orig[count] == predictions_train[count]:
+                true_pred += 1
+            else:
+                false_pred += 1
+        print('Total number of train-set predictions is: ' + str(len(y1_train_orig)))
+        print('Number of correct train-set predictions is: ' + str(true_pred))
+        print('Number of incorrect train-set predictions is: ' + str(false_pred))
+
+        # Compute Area Under the Receiver Operating Characteristic Curve (ROC AUC) from prediction scores.
+        # Returns AUC
+        auc_score = sklearn.metrics.roc_auc_score(y1_train_orig, predictions_train)
+        print('train-set auc score is: ' + str(auc_score))
+        print('train-set seed number is: ' + str(seed))
+
+        ##########################################################
+        # Apply on test data
+        pred_test = model.predict({'forward': x1_test, 'reverse': x2_test})
+        # See which label has the highest confidence value
+        predictions_test = np.argmax(pred_test, axis=1)
+
+        true_pred = 0
+        false_pred = 0
+        for count, value in enumerate(predictions_test):
+            if y1_test_orig[count] == predictions_test[count]:
+                true_pred += 1
+            else:
+                false_pred += 1
+        print('Total number of test-set predictions is: ' + str(len(y1_test_orig)))
+        print('Number of correct test-set predictions is: ' + str(true_pred))
+        print('Number of incorrect test-set predictions is: ' + str(false_pred))
+
+        auc_score = sklearn.metrics.roc_auc_score(y1_test_orig, predictions_test)
+        print('test-set auc score is: ' + str(auc_score))
+        print('test-set seed number is: ' + str(seed))
+        sys.exit()
+        #######*******************************
+
+        """
+        model.load_weights(weight_dir)
+        weights = model.get_weights()
+
+        # Apply on test data
+        pred_test = model.predict({'forward': x1_test, 'reverse': x2_test})
+        # Sum the absolute difference between y1_test and pred_test
+        vals = np.sum(np.absolute(np.subtract(y1_test, pred_test)), axis=1)
+        baseline = np.average(vals)
+        """
+        distances = []
         for i in range(self.filters):
             model.load_weights(weight_dir)
             weights = model.get_weights()
 
-            #zeros = np.zeros((12,4))
-            #weights[0][:,:,i] = zeros
-
-            #model.set_weights(weights)
-            pred_train = model.predict({'forward': x1_train, 'reverse': x2_train})
-
-            # See which label has the highest confidence value
-            predictions_train = np.argmax(pred_train, axis=1)
-
-            print(y1_train_orig[0:10])
-            print(predictions_train[0:10])
-
-            true_pred = 0
-            false_pred = 0
-            for count, value in enumerate(predictions_train):
-                if y1_train_orig[count] == predictions_train[count]:
-                    true_pred += 1
-                else:
-                    false_pred += 1
-            print('Total number of train-set predictions is: ' + str(len(y1_train_orig)))
-            print('Number of correct train-set predictions is: ' + str(true_pred))
-            print('Number of incorrect train-set predictions is: ' + str(false_pred))
-
-            # Compute Area Under the Receiver Operating Characteristic Curve (ROC AUC) from prediction scores.
-            # Returns AUC
-            auc_score = sklearn.metrics.roc_auc_score(y1_train_orig, predictions_train)
-            print('train-set auc score is: ' + str(auc_score))
-            print('train-set seed number is: ' + str(seed))
+            zeros = np.zeros((12,4))
+            weights[0][:,:,i] = zeros
+            model.set_weights(weights)
 
             ##########################################################
             # Apply on test data
             pred_test = model.predict({'forward': x1_test, 'reverse': x2_test})
             # See which label has the highest confidence value
-            predictions_test = np.argmax(pred_test, axis=1)
-
-            true_pred = 0
-            false_pred = 0
-            for count, value in enumerate(predictions_test):
-                if y1_test_orig[count] == predictions_test[count]:
-                    true_pred += 1
-                else:
-                    false_pred += 1
-            print('Total number of test-set predictions is: ' + str(len(y1_test_orig)))
-            print('Number of correct test-set predictions is: ' + str(true_pred))
-            print('Number of incorrect test-set predictions is: ' + str(false_pred))
-
-            auc_score = sklearn.metrics.roc_auc_score(y1_test_orig, predictions_test)
-            print('test-set auc score is: ' + str(auc_score))
-            print('test-set seed number is: ' + str(seed))
-
-            sys.exit()
-
-            pred_train = model.predict({'forward': x1_train, 'reverse': x2_train})
-            vals = []
-            for i in range(len(pred_train)):
-                if pred_train[i] < 0.5:
-                    val = 0
-                    vals.append(val)
-                if pred_train[i] >= 0.5:
-                    val = 1
-                    vals.append(val)
-
-            print(y1_train[0:10])
-            print(vals[0:10])
-
-            true_pred = 0
-            false_pred = 0
-            for ind in range(len(pred_train)):
-                if y1_train[ind] == vals[ind]:
-                    true_pred += 1
-                else:
-                    false_pred += 1
-            print('Total number of train-set predictions is: ' + str(len(y1_train)))
-            print('Number of correct train-set predictions is: ' + str(true_pred))
-            print('Number of incorrect train-set predictions is: ' + str(false_pred))
-
-            auc_score = sklearn.metrics.roc_auc_score(y1_train, pred_train)
-            print('train-set auc score is: ' + str(auc_score))
-            print('train-set seed number is: ' + str(seed))
-            train_afters.append(auc_score)
-
-            ##########################################################
-
-            pred = model.predict({'forward': x1_test, 'reverse': x2_test})
-
-            vals = []
-            for i in range(len(pred)):
-                if pred[i] < 0.5:
-                    val = 0
-                    vals.append(val)
-                if pred[i] >= 0.5:
-                    val = 1
-                    vals.append(val)
-
-
-            true_pred = 0
-            false_pred = 0
-            for ind in range(len(y1_test)):
-                if y1_test[ind] == vals[ind]:
-                    true_pred += 1
-                else:
-                    false_pred += 1
-            print('Total number of test-set predictions is: ' + str(len(y1_test)))
-            print('Number of correct test-set predictions is: ' + str(true_pred))
-            print('Number of incorrect test-set predictions is: ' + str(false_pred))
-
-            auc_score = sklearn.metrics.roc_auc_score(y1_test, pred)
-            print('test-set auc score is: ' + str(auc_score))
-            print('test-set seed number is: ' + str(seed))
-            test_afters.append(auc_score)
-        print('***********************************************************************')
-        print(train_afters)
-        print(test_afters)
+            vals = np.sum(np.absolute(np.subtract(y1_test, pred_test)), axis=1)
+            ave_distance = np.average(vals)
+            distances.append(ave_distance)
+            print(i)
+        print(distances)
+        np.savetxt('distances.txt', distances)
 
     def eval(self):
         prep = preprocess(self.fasta_file, self.readout_file)
@@ -411,7 +377,6 @@ class nn_model:
         #assert y1_test == y2_test
 
         model = self.create_model()
-
 
         # change from list to numpy array
         y1_train = np.asarray(y1_train)
