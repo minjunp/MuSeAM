@@ -21,6 +21,7 @@ neg_bed <- fname$neg_bed
 
 if (fname$organism == 'hg19'){
 genNullSeqs(pos_bed,nMaxTrials=20,xfold=1,genomeVersion='hg19', outputPosFastaFN=pos_fa, outputBedFN=neg_bed, outputNegFastaFN=neg_fa)
+}
 
 if (fname$organism == 'mm10'){
 genome=BSgenome.Mmusculus.UCSC.mm10.masked
