@@ -3,7 +3,7 @@ from Bio import SeqIO
 from Bio.SeqIO import FastaIO
 import pandas as pd
 
-fname = pd.read_csv('config.csv')
+df = pd.read_csv('config.csv')
 
 def fasta_reformat(fname, output_name):
    with open(output_name, "w") as output_handle:
