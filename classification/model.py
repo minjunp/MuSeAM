@@ -147,25 +147,23 @@ class nn_model:
         fw = first_layer(forward)
         bw = first_layer(reverse)
 
-        concat_relu = concatenate([fw, bw], axis=1)
-        pool_size_input = concat_relu.shape[1]
+        concat = concatenate([fw, bw], axis=1)
+        pool_size_input = concat.shape[1]
 
-        #concat_relu = ReLU()(concat)
-        #concat_relu = Dense(1, activation= 'sigmoid')(concat)
+        #concat = ReLU()(concat)
+        #concat = Dense(1, activation= 'sigmoid')(concat)
 
         if self.pool_type == 'Max':
-            pool_layer = MaxPooling1D(pool_size=pool_size_input)(concat_relu)
+            pool_layer = MaxPooling1D(pool_size=pool_size_input)(concat)
         elif self.pool_type == 'Ave':
-            pool_layer = AveragePooling1D(pool_size=pool_size_input)(concat_relu)
+            pool_layer = AveragePooling1D(pool_size=pool_size_input)(concat)
         elif self.pool_type == 'custom':
-
             def out_shape(input_shape):
                 shape = list(input_shape)
                 print(input_shape)
                 shape[0] = 10
                 return tuple(shape)
             #model.add(Lambda(top_k, arguments={'k': 10}))
-
             def top_k(inputs, k):
                 # tf.nn.top_k Finds values and indices of the k largest entries for the last dimension
                 print(inputs.shape)
@@ -178,19 +176,16 @@ class nn_model:
             pool_layer = AveragePooling1D(pool_size=2)(pool_layer)
         elif self.pool_type == 'custom_sum':
             ## apply relu function before custom_sum functions
-
             def summed_up(inputs):
                 #nonzero_vals = tf.keras.backend.relu(inputs)
                 new_vals = tf.math.reduce_sum(inputs, axis = 1, keepdims = True)
                 return new_vals
             pool_layer = Lambda(summed_up)(concat_relu)
-
         else:
-            sys.exit()
+            raise NameError('Set the pooling layer name correctly')
 
-        # flatten the layer (None, 512)
         flat = Flatten()(pool_layer)
-
+        
         after_flat = Dense(32)(flat)
 
         # Binary classification with 2 output neurons
@@ -205,7 +200,7 @@ class nn_model:
             ## trainable = False with learned bias
             outputs = Dense(2, kernel_initializer='normal', kernel_regularizer=regularizers.l2(0.001), activation= self.activation_type)(after_flat)
         else:
-            sys.exit()
+            raise NameError('Set the regularizer name correctly')
 
         #weight_forwardin_0=model.layers[0].get_weights()[0]
         #print(weight_forwardin_0)
