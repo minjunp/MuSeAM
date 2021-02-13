@@ -1,6 +1,4 @@
 from model import nn_model
-#from one_seq_pipeline import nn_model
-#from one_seq_sample import nn_model
 import time
 import sys
 
@@ -37,11 +35,8 @@ def main(argv = None):
 
     dict = train(parameter_file)
 
-    model = nn_model(fasta_file, readout_file, filters=dict["filters"], kernel_size=dict["kernel_size"], pool_type=dict["pool_type"], regularizer=dict["regularizer"],
+    nn_model(fasta_file, readout_file, filters=dict["filters"], kernel_size=dict["kernel_size"], pool_type=dict["pool_type"], regularizer=dict["regularizer"],
             activation_type=dict["activation_type"], epochs=dict["epochs"], batch_size=dict["batch_size"])
-
-    #model.eval()
-    model.cross_val_custom()
 
     # reports time consumed during execution (secs)
     print("--- %s seconds ---" % (time.time() - start_time))

@@ -66,7 +66,6 @@ class ConvolutionLayer(Conv1D):
 
       ## shape of self.kernel is (12, 4, 512)
       ##the type of self.kernel is <class 'tensorflow.python.ops.resource_variable_ops.ResourceVariable'>
-
         print("self.run value is", self.run_value)
         if self.run_value > 2:
 
@@ -77,7 +76,12 @@ class ConvolutionLayer(Conv1D):
             beta = 1/alpha
             bkg = tf.constant([0.25, 0.25, 0.25, 0.25])
             bkg_tf = tf.cast(bkg, tf.float32)
-            filt_list = tf.map_fn(lambda x: tf.math.scalar_mul(beta, tf.subtract(tf.subtract(tf.subtract(tf.math.scalar_mul(alpha, x), tf.expand_dims(tf.math.reduce_max(tf.math.scalar_mul(alpha, x), axis = 1), axis = 1)), tf.expand_dims(tf.math.log(tf.math.reduce_sum(tf.math.exp(tf.subtract(tf.math.scalar_mul(alpha, x), tf.expand_dims(tf.math.reduce_max(tf.math.scalar_mul(alpha, x), axis = 1), axis = 1))), axis = 1)), axis = 1)), tf.math.log(tf.reshape(tf.tile(bkg_tf, [tf.shape(x)[0]]), [tf.shape(x)[0], tf.shape(bkg_tf)[0]])))), x_tf)
+            filt_list = tf.map_fn(lambda x:
+                                  tf.math.scalar_mul(beta, tf.subtract(tf.subtract(tf.subtract(tf.math.scalar_mul(alpha, x),
+                                  tf.expand_dims(tf.math.reduce_max(tf.math.scalar_mul(alpha, x), axis = 1), axis = 1)),
+                                  tf.expand_dims(tf.math.log(tf.math.reduce_sum(tf.math.exp(tf.subtract(tf.math.scalar_mul(alpha, x),
+                                  tf.expand_dims(tf.math.reduce_max(tf.math.scalar_mul(alpha, x), axis = 1), axis = 1))), axis = 1)), axis = 1)),
+                                  tf.math.log(tf.reshape(tf.tile(bkg_tf, [tf.shape(x)[0]]), [tf.shape(x)[0], tf.shape(bkg_tf)[0]])))), x_tf)
             #print("type of output from map_fn is", type(filt_list)) ##type of output from map_fn is <class 'tensorflow.python.framework.ops.Tensor'>   shape of output from map_fn is (10, 12, 4)
             #print("shape of output from map_fn is", filt_list.shape)
             #transf = tf.reshape(filt_list, [12, 4, self.filters]) ##12, 4, 512
@@ -87,28 +91,24 @@ class ConvolutionLayer(Conv1D):
 
         else:
             outputs = self._convolution_op(inputs, self.kernel)
-
         self.run_value += 1
         return outputs
 
 class nn_model:
-    def __init__(self, fasta_file, readout_file, filters, kernel_size, pool_type, pool, regularizer, activation_type, epochs, batch_size):
+    def __init__(self, fasta_file, readout_file, filters, kernel_size, pool_type, regularizer, activation_type, epochs, batch_size):
         """initialize basic parameters"""
         self.filters = filters
         self.kernel_size = kernel_size
         self.pool_type = pool_type
-        self.pool = pool
         self.regularizer = regularizer
         self.activation_type = activation_type
         self.epochs = epochs
         self.batch_size = batch_size
-        #self.stride = stride
-        #self.create_model()
         self.fasta_file = fasta_file
         self.readout_file = readout_file
 
-        self.eval()
-        #self.cross_val_custom()
+        #self.eval()
+        self.cross_val_custom()
 
     def create_model(self):
         # different metric functions
@@ -144,8 +144,7 @@ class nn_model:
         bw = first_layer(reverse)
 
         concat = concatenate([fw, bw], axis=1)
-
-        pool_size_input = concat_relu.shape[1]
+        pool_size_input = concat.shape[1]
         #concat_relu = Dense(1, activation= 'sigmoid')(concat)
 
         concat_relu = ReLU()(concat)
@@ -155,14 +154,12 @@ class nn_model:
         elif self.pool_type == 'Ave':
             pool_layer = AveragePooling1D(pool_size=pool_size_input)(concat_relu)
         elif self.pool_type == 'custom':
-
             def out_shape(input_shape):
                 shape = list(input_shape)
                 print(input_shape)
                 shape[0] = 10
                 return tuple(shape)
             #model.add(Lambda(top_k, arguments={'k': 10}))
-
             def top_k(inputs, k):
                 # tf.nn.top_k Finds values and indices of the k largest entries for the last dimension
                 print(inputs.shape)
@@ -175,7 +172,6 @@ class nn_model:
             pool_layer = AveragePooling1D(pool_size=2)(pool_layer)
         elif self.pool_type == 'custom_sum':
             ## apply relu function before custom_sum functions
-
             def summed_up(inputs):
                 #nonzero_vals = tf.keras.backend.relu(inputs)
                 new_vals = tf.math.reduce_sum(inputs, axis = 1, keepdims = True)
@@ -183,7 +179,7 @@ class nn_model:
             pool_layer = Lambda(summed_up)(concat_relu)
 
         else:
-            sys.exit()
+            raise NameError('Set the pooling layer name correctly')
 
         # flatten the layer (None, 512)
         flat = Flatten()(pool_layer)
@@ -193,26 +189,20 @@ class nn_model:
         elif self.regularizer == 'L_2':
             outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l2(0.001), activation= self.activation_type)(flat)
         else:
-            sys.exit()
+            raise NameError('Set the regularizer name correctly')
 
-        #weight_forwardin_0=model.layers[0].get_weights()[0]
-        #print(weight_forwardin_0)
-        model = keras.Model(inputs=[forward, reverse], outputs=outputs, name='mpra_model')
-        model2 = keras.Model(inputs=[forward, reverse], outputs=pool_layer, name='intermediate_model')
-        #print model summary
+        model = keras.Model(inputs=[forward, reverse], outputs=outputs)
+        model2 = keras.Model(inputs=[forward, reverse], outputs=pool_layer)
+
         model.summary()
-        #sys.exit()
 
         model.compile(loss='mean_squared_error', optimizer='adam', metrics = [coeff_determination, spearman_fn])
         model2.compile(loss='mean_squared_error', optimizer='adam', metrics = [coeff_determination, spearman_fn])
-
-        #return model
-        return model, model2, first_layer
+        return model, model2
 
     def eval(self):
+        # Preprocess the data to one-hot encoded vector
         prep = preprocess(self.fasta_file, self.readout_file)
-
-        # if want mono-nucleotide sequences
         dict = prep.one_hot_encode()
 
         # if want dinucleotide sequences
@@ -231,17 +221,14 @@ class nn_model:
 
         seed = random.randint(1,1000)
 
+        # 90% Train, 10% Test
         x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.1, random_state=seed)
-        # split for reverse complemenet sequences
         x2_train, x2_test, y2_train, y2_test = train_test_split(rc_fasta, readout, test_size=0.1, random_state=seed)
         #assert x1_test == x2_test
         #assert y1_test == y2_test
 
         #model = self.create_model()
-        model, model2, first_layer = self.create_model()
-
-        # filters before training the model
-        initial_weight = first_layer.get_weights()
+        model, model2 = self.create_model()
 
         # change from list to numpy array
         y1_train = np.asarray(y1_train)
@@ -249,33 +236,27 @@ class nn_model:
         y2_train = np.asarray(y2_train)
         y2_test = np.asarray(y2_test)
 
-        # if we want to merge two training dataset
-        # comb = np.concatenate((y1_train, y2_train))
-
         # train the data
         history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
         #history_ver2 = model2.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
-        #with early stopping
-        callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=5, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
+
+        # Early stopping
+        #callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=5, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
         #history = model.fit(features2, readout, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1, callbacks = [callback])
 
         history2 = model.evaluate({'forward': x1_test, 'reverse': x2_test}, y1_test)
         pred = model.predict({'forward': x1_test, 'reverse': x2_test})
 
-        print('metric values of model.evaluate: '+str(history2))
+        print("Seed number is {}".format(seed))
+        print('metric values of model.evaluate: '+ str(history2))
         print('metrics names are ' + str(model.metrics_names))
 
     def cross_val_custom(self):
-        # so that we get different metrics used in this custom version
-        # preprocess the data
+        # Preprocess the data
         prep = preprocess(self.fasta_file, self.readout_file)
-
-        # if want mono-nucleotide sequences
         dict = prep.one_hot_encode()
-        # if want dinucleotide sequences
+        # If want dinucleotide sequences
         #dict = prep.dinucleotide_encode()
-
-        np.set_printoptions(threshold=sys.maxsize)
 
         fw_fasta = dict["forward"]
         rc_fasta = dict["reverse"]
@@ -290,8 +271,7 @@ class nn_model:
         step.remove(0)
 
         # seed to reproduce results
-        #seed = random.randint(1,1000)
-        seed = 916
+        seed = random.randint(1,1000)
         forward_shuffle, readout_shuffle = shuffle(fw_fasta, readout, random_state=seed)
         reverse_shuffle, readout_shuffle = shuffle(rc_fasta, readout, random_state=seed)
 
@@ -302,15 +282,6 @@ class nn_model:
         metrics = []
         save_pred = []
 
-        #fig = plt.figure()
-        index = 1
-
-        """
-        # initiate index vectors
-        index_seq = []
-        x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.1, random_state=545)
-        x2_train, x2_test, y2_train, y2_test = train_test_split(rc_fasta, readout, test_size=0.1, random_state=545)
-        """
         true_vals = []
         pred_vals = []
 
@@ -328,16 +299,10 @@ class nn_model:
             if i == 0:
                 y1_train = readout_shuffle[step[i]:]
                 y1_test = readout_shuffle[0:step[i]]
-                #y2_train = readout_shuffle[step[i]:]
-                #y2_test = readout_shuffle[0:step[i]]
             else:
                 y1_test = readout_shuffle[step[i-1]:step[i]]
                 y1_train = readout_shuffle[0:step[i-1]]+readout_shuffle[step[i]:]
-                #y2_test = readout_shuffle[step[i-1]:step[i]]
-                #y2_train = readout_shuffle[0:step[i-1]]+readout_shuffle[step[i]:]
-
             if i == 10:
-                print("i was 10")
                 x1_train = forward_shuffle[0:step[i-1]]
                 x1_test = forward_shuffle[step[i-1]:step[i]]
                 x2_train = reverse_shuffle[0:step[i-1]]
@@ -354,11 +319,9 @@ class nn_model:
             x2_test = np.array(x2_test)
 
             callback = EarlyStopping(monitor='val_coeff_determination', patience=5, mode='max')
-            #with early stopping
             #history = model.fit(x_train, y_train, validation_data=(x_test, y_test), epochs=self.epochs, batch_size=self.batch_size, callbacks = [callback])
-            #without early stopping
-            model, model2, first_layer = self.create_model()
 
+            model, model2 = self.create_model()
             history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
             history2 = model.evaluate({'forward': x1_test, 'reverse': x2_test}, y1_test)
             pred = model.predict({'forward': x1_test, 'reverse': x2_test})
@@ -366,40 +329,16 @@ class nn_model:
 
             # reshape as a column vector to concatenate
             y_true3 = np.reshape(y_true2, (len(y_true2), -1))
-
             true_pred = np.concatenate((y_true3,pred), axis=1)
 
             #np.set_printoptions(threshold=sys.maxsize)
             #np.savetxt(os.path.join('./output_files', 'y_true_%d_%d'%(seed,i)+'.txt'), y_true2)
             #np.savetxt(os.path.join('./output_files', 'y_pred_%d_%d'%(seed,i)+'.txt'), pred)
-            np.savetxt(os.path.join('./problematic_seqs/output_files', 'vals_%d_%d'%(seed,i)+'.txt'), true_pred)
+            #np.savetxt(os.path.join('./problematic_seqs/output_files', 'vals_%d_%d'%(seed,i)+'.txt'), true_pred)
 
             y_pred = np.ndarray.tolist(pred)
             y_true = y1_test
-
             metrics.append((history2))
-
-            # print individual plots and save
-
-            #with open('y_true_%d_%d'%(seed, i)+'.txt', 'w') as file:
-            #    file.write('y_true is \n' + str(y_true))
-            #with open('y_pred_%d_%d'%(seed, i)+'.txt', 'w') as file:
-            #    file.write('y_pred is \n' + str(y_pred))
-            #with open('index_%d_%d'%(seed,i)+'.txt', 'w') as file:
-            #    file.write('index of seqeucnes is \n' + str(index_seq))
-            """
-            #plt.subplot(int('34%d'%index))
-            plt.subplot(3,4,index)
-            plt.scatter(y_true, y_pred, s=1)
-            index = index +1
-            plt.grid(True)
-            plt.xlim([-1, 3])
-            plt.ylim([-1, 3])
-            #plt.xlabel('y_true')
-            #plt.ylabel('y_pred')
-            """
-
-        #plt.savefig('plot_%d'%seed)
 
         g1 = []
         g2 = []
@@ -410,7 +349,6 @@ class nn_model:
             g2.append(r_2)
             g3.append(spearman_val)
 
-        #plt.show()
         print(g2)
         print(g3)
         print('seed number = %d' %seed)
