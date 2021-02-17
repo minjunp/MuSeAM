@@ -28,7 +28,7 @@ from sklearn.pipeline import Pipeline
 from tensorflow.keras import backend as K
 from sklearn.metrics import r2_score
 from tensorflow.keras import regularizers
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold
 import tensorflow as tf
 #from tensorflow.nn import avg_pool1d
 from scipy.stats import spearmanr, pearsonr
@@ -74,7 +74,7 @@ class ConvolutionLayer(Conv1D):
 
             alpha = 100
             beta = 1/alpha
-            bkg = tf.constant([0.25, 0.25, 0.25, 0.25])
+            bkg = tf.constant([0.295, 0.205, 0.205, 0.295])
             bkg_tf = tf.cast(bkg, tf.float32)
             filt_list = tf.map_fn(lambda x:
                                   tf.math.scalar_mul(beta, tf.subtract(tf.subtract(tf.subtract(tf.math.scalar_mul(alpha, x),
@@ -95,7 +95,7 @@ class ConvolutionLayer(Conv1D):
         return outputs
 
 class nn_model:
-    def __init__(self, fasta_file, readout_file, filters, kernel_size, pool_type, regularizer, activation_type, epochs, batch_size):
+    def __init__(self, fasta_file, readout_file, filters, kernel_size, pool_type, regularizer, activation_type, epochs, batch_size, loss_func):
         """initialize basic parameters"""
         self.filters = filters
         self.kernel_size = kernel_size
@@ -106,6 +106,7 @@ class nn_model:
         self.batch_size = batch_size
         self.fasta_file = fasta_file
         self.readout_file = readout_file
+        self.loss_func = loss_func
 
         #self.eval()
         self.cross_val_custom()
@@ -117,7 +118,8 @@ class nn_model:
             SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
             return (1 - SS_res/(SS_tot + K.epsilon()))
         def spearman_fn(y_true, y_pred):
-            return tf.py_function(spearmanr, [tf.cast(y_pred, tf.float32), tf.cast(y_true, tf.float32)], Tout=tf.float32)
+            return tf.py_function(spearmanr, [tf.cast(y_pred, tf.float32),
+                   tf.cast(y_true, tf.float32)], Tout=tf.float32)
 
         # building model
         prep = preprocess(self.fasta_file, self.readout_file)
@@ -145,7 +147,7 @@ class nn_model:
 
         concat = concatenate([fw, bw], axis=1)
         pool_size_input = concat.shape[1]
-        #concat_relu = Dense(1, activation= 'sigmoid')(concat)
+        #concat_relu = Dense(1)(concat)
 
         concat_relu = ReLU()(concat)
 
@@ -196,8 +198,24 @@ class nn_model:
 
         model.summary()
 
-        model.compile(loss='mean_squared_error', optimizer='adam', metrics = [coeff_determination, spearman_fn])
-        model2.compile(loss='mean_squared_error', optimizer='adam', metrics = [coeff_determination, spearman_fn])
+        if self.loss_func == 'mse':
+            model.compile(loss='mean_squared_error', optimizer='adam', metrics = [coeff_determination, spearman_fn])
+            model2.compile(loss='mean_squared_error', optimizer='adam', metrics = [coeff_determination, spearman_fn])
+        elif self.loss_func == 'poisson':
+            loss_poisson = keras.losses.Poisson()
+            model.compile(loss=loss_poisson, optimizer='adam', metrics = [coeff_determination, spearman_fn])
+            model2.compile(loss=loss_poisson, optimizer='adam', metrics = [coeff_determination, spearman_fn])
+        elif self.loss_func == 'huber':
+            loss_huber = keras.losses.Huber()
+            model.compile(loss=loss_huber, optimizer='adam', metrics = [coeff_determination, spearman_fn])
+            model2.compile(loss=loss_huber, optimizer='adam', metrics = [coeff_determination, spearman_fn])
+        elif self.loss_func == 'reduction':
+            loss_reduction = keras.losses.MeanSquaredLogarithmicError()
+            model.compile(loss=loss_reduction, optimizer='adam', metrics = [coeff_determination, spearman_fn])
+            model2.compile(loss=loss_reduction, optimizer='adam', metrics = [coeff_determination, spearman_fn])
+        else:
+            raise NameError('Unrecognized Loss Function')
+
         return model, model2
 
     def eval(self):
@@ -237,12 +255,12 @@ class nn_model:
         y2_test = np.asarray(y2_test)
 
         # train the data
-        history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
+        #history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
         #history_ver2 = model2.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
 
         # Early stopping
-        #callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=5, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
-        #history = model.fit(features2, readout, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1, callbacks = [callback])
+        callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
+        history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1, callbacks = [callback])
 
         history2 = model.evaluate({'forward': x1_test, 'reverse': x2_test}, y1_test)
         pred = model.predict({'forward': x1_test, 'reverse': x2_test})
@@ -266,78 +284,38 @@ class nn_model:
             readout = np.log2(readout)
             readout = np.ndarray.tolist(readout)
 
-        step = list(range(0,len(fw_fasta), int(len(fw_fasta)/10)))
-        step.append(len(fw_fasta))
-        step.remove(0)
-
         # seed to reproduce results
         seed = random.randint(1,1000)
         forward_shuffle, readout_shuffle = shuffle(fw_fasta, readout, random_state=seed)
         reverse_shuffle, readout_shuffle = shuffle(rc_fasta, readout, random_state=seed)
+        readout_shuffle = np.array(readout_shuffle)
 
-        forward_shuffle = np.ndarray.tolist(forward_shuffle)
-        reverse_shuffle = np.ndarray.tolist(reverse_shuffle)
+        #forward_shuffle = np.ndarray.tolist(forward_shuffle)
+        #reverse_shuffle = np.ndarray.tolist(reverse_shuffle)
 
         # initialize metrics to save values
         metrics = []
-        save_pred = []
 
-        true_vals = []
-        pred_vals = []
-
-        for i in range(len(step)):
-            if i == 0:
-                x1_train = forward_shuffle[step[i]:]
-                x1_test = forward_shuffle[0:step[i]]
-                x2_train = reverse_shuffle[step[i]:]
-                x2_test = reverse_shuffle[0:step[i]]
-            else:
-                x1_test = forward_shuffle[step[i-1]:step[i]]
-                x1_train = forward_shuffle[0:step[i-1]]+forward_shuffle[step[i]:]
-                x2_test = reverse_shuffle[step[i-1]:step[i]]
-                x2_train = reverse_shuffle[0:step[i-1]]+reverse_shuffle[step[i]:]
-            if i == 0:
-                y1_train = readout_shuffle[step[i]:]
-                y1_test = readout_shuffle[0:step[i]]
-            else:
-                y1_test = readout_shuffle[step[i-1]:step[i]]
-                y1_train = readout_shuffle[0:step[i-1]]+readout_shuffle[step[i]:]
-            if i == 10:
-                x1_train = forward_shuffle[0:step[i-1]]
-                x1_test = forward_shuffle[step[i-1]:step[i]]
-                x2_train = reverse_shuffle[0:step[i-1]]
-                x2_test = reverse_shuffle[step[i-1]:step[i]]
-                y1_train = readout_shuffle[0:step[i-1]]
-                y1_test = readout_shuffle[step[i-1]:step[i]]
-
-            # change to ndarray type to pass, y1_test = y2_test
-            x1_train = np.array(x1_train)
-            x1_test = np.array(x1_test)
-            y1_train = np.array(y1_train)
-            y1_test = np.array(y1_test)
-            x2_train = np.array(x2_train)
-            x2_test = np.array(x2_test)
-
-            callback = EarlyStopping(monitor='val_coeff_determination', patience=5, mode='max')
-            #history = model.fit(x_train, y_train, validation_data=(x_test, y_test), epochs=self.epochs, batch_size=self.batch_size, callbacks = [callback])
-
+        # Provides train/test indices to split data in train/test sets.
+        kFold = StratifiedKFold(n_splits=10)
+        ln = np.zeros(len(readout_shuffle))
+        for train, test in kFold.split(ln, ln):
+            model = None
             model, model2 = self.create_model()
-            history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
-            history2 = model.evaluate({'forward': x1_test, 'reverse': x2_test}, y1_test)
-            pred = model.predict({'forward': x1_test, 'reverse': x2_test})
-            y_true2 = np.asarray(y1_test)
 
-            # reshape as a column vector to concatenate
-            y_true3 = np.reshape(y_true2, (len(y_true2), -1))
-            true_pred = np.concatenate((y_true3,pred), axis=1)
+            fwd_train = forward_shuffle[train]
+            fwd_test = forward_shuffle[test]
+            rc_train = reverse_shuffle[train]
+            rc_test = reverse_shuffle[test]
+            y_train = readout_shuffle[train]
+            y_test = readout_shuffle[test]
 
-            #np.set_printoptions(threshold=sys.maxsize)
-            #np.savetxt(os.path.join('./output_files', 'y_true_%d_%d'%(seed,i)+'.txt'), y_true2)
-            #np.savetxt(os.path.join('./output_files', 'y_pred_%d_%d'%(seed,i)+'.txt'), pred)
-            #np.savetxt(os.path.join('./problematic_seqs/output_files', 'vals_%d_%d'%(seed,i)+'.txt'), true_pred)
+            # Early stopping
+            callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
+            history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0, callbacks = [callback])
 
-            y_pred = np.ndarray.tolist(pred)
-            y_true = y1_test
+            #history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
+            history2 = model.evaluate({'forward': fwd_test, 'reverse': rc_test}, y_test)
             metrics.append((history2))
 
         g1 = []
