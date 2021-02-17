@@ -38,9 +38,8 @@ import sklearn
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import r2_score
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score, KFold
 from sklearn.utils import shuffle
-from sklearn.model_selection import cross_val_score, KFold
 
 class ConvolutionLayer(Conv1D):
     def __init__(self, filters,
@@ -107,7 +106,7 @@ class nn_model:
 
         self.eval()
         #self.filter_importance()
-        #self.cross_val_custom()
+        #self.cross_val()
         #self.hyperopt_tuner()
 
     def create_model(self):
@@ -185,7 +184,7 @@ class nn_model:
             raise NameError('Set the pooling layer name correctly')
 
         flat = Flatten()(pool_layer)
-        
+
         after_flat = Dense(32)(flat)
 
         # Binary classification with 2 output neurons
@@ -508,7 +507,7 @@ class nn_model:
 
         print(best_params)
 
-    def cross_val_custom(self):
+    def cross_val(self):
         # so that we get different metrics used in this custom version
         # preprocess the data
         prep = preprocess(self.fasta_file, self.readout_file)
@@ -531,79 +530,38 @@ class nn_model:
         #    readout = np.log2(readout)
         #    readout = np.ndarray.tolist(readout)
 
-        step = list(range(0,len(fw_fasta), int(len(fw_fasta)/10)))
-        step.append(len(fw_fasta))
-        step.remove(0)
-
         forward_shuffle, readout_shuffle = shuffle(fw_fasta, readout, random_state=seed)
         reverse_shuffle, readout_shuffle = shuffle(rc_fasta, readout, random_state=seed)
-
-        forward_shuffle = np.ndarray.tolist(forward_shuffle)
-        reverse_shuffle = np.ndarray.tolist(reverse_shuffle)
+        readout_shuffle = np.array(readout_shuffle)
 
         # initialize metrics to save values
         metrics = []
-        save_pred = []
-
-        #fig = plt.figure()
-        index = 1
-
-        """
-        # initiate index vectors
-        index_seq = []
-        x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.1, random_state=545)
-        x2_train, x2_test, y2_train, y2_test = train_test_split(rc_fasta, readout, test_size=0.1, random_state=545)
-        """
 
         # save the information of 10 folds auc scores
         train_auc_scores = []
         test_auc_scores = []
 
-        for i in range(len(step)):
-            if i == 0:
-                x1_train = forward_shuffle[step[i]:]
-                x1_test = forward_shuffle[0:step[i]]
-                x2_train = reverse_shuffle[step[i]:]
-                x2_test = reverse_shuffle[0:step[i]]
-            else:
-                x1_test = forward_shuffle[step[i-1]:step[i]]
-                x1_train = forward_shuffle[0:step[i-1]]+forward_shuffle[step[i]:]
-                x2_test = reverse_shuffle[step[i-1]:step[i]]
-                x2_train = reverse_shuffle[0:step[i-1]]+reverse_shuffle[step[i]:]
-            if i == 0:
-                y1_train = readout_shuffle[step[i]:]
-                y1_test = readout_shuffle[0:step[i]]
-                #y2_train = readout_shuffle[step[i]:]
-                #y2_test = readout_shuffle[0:step[i]]
-            else:
-                y1_test = readout_shuffle[step[i-1]:step[i]]
-                y1_train = readout_shuffle[0:step[i-1]]+readout_shuffle[step[i]:]
-                #y2_test = readout_shuffle[step[i-1]:step[i]]
-                #y2_train = readout_shuffle[0:step[i-1]]+readout_shuffle[step[i]:]
+        # Provides train/test indices to split data in train/test sets.
+        kFold = StratifiedKFold(n_splits=10)
+        ln = np.zeros(len(readout_shuffle))
+        for train, test in kFold.split(ln, ln):
+            model = None
+            model, model2 = self.create_model()
 
-            if i == 10:
-                print("i was 10")
-                x1_train = forward_shuffle[0:step[i-1]]
-                x1_test = forward_shuffle[step[i-1]:step[i]]
-                x2_train = reverse_shuffle[0:step[i-1]]
-                x2_test = reverse_shuffle[step[i-1]:step[i]]
-                y1_train = readout_shuffle[0:step[i-1]]
-                y1_test = readout_shuffle[step[i-1]:step[i]]
+            fwd_train = forward_shuffle[train]
+            fwd_test = forward_shuffle[test]
+            rc_train = reverse_shuffle[train]
+            rc_test = reverse_shuffle[test]
+            y_train = readout_shuffle[train]
+            y_test = readout_shuffle[test]
 
-            # change to ndarray type to pass, y1_test = y2_test
-            x1_train = np.array(x1_train)
-            x1_test = np.array(x1_test)
-            y1_train = np.array(y1_train)
-            y1_test = np.array(y1_test)
-            x2_train = np.array(x2_train)
-            x2_test = np.array(x2_test)
-
-            callback = EarlyStopping(monitor='val_coeff_determination', patience=5, mode='max')
-            #with early stopping
-            #history = model.fit(x_train, y_train, validation_data=(x_test, y_test), epochs=self.epochs, batch_size=self.batch_size, callbacks = [callback])
-            #without early stopping
             model = self.create_model()
 
+            # Early stopping
+            callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
+            history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0, callbacks = [callback])
+
+            # Without early stopping
             model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
 
             pred_train = model.predict({'forward': x1_test, 'reverse': x2_test})
