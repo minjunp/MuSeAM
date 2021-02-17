@@ -1,7 +1,8 @@
-filters 512
+filters 300
 kernel_size 12
 pool_type Max
 regularizer L_1
 activation_type linear
-epochs 2
-batch_size 512
+epochs 10
+batch_size 128
+loss_func mse

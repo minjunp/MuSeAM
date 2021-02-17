@@ -1,6 +1,4 @@
 from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import KFold
 import numpy as np
 import sys
 import math
@@ -21,14 +19,12 @@ from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, Averag
 #from keras.utils.generic_utils import get_custom_objects
 from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
 from keras.utils.vis_utils import plot_model
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from tensorflow.keras import backend as K
 from sklearn.metrics import r2_score
 from tensorflow.keras import regularizers
-from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score, KFold
 import tensorflow as tf
 #from tensorflow.nn import avg_pool1d
 from scipy.stats import spearmanr, pearsonr
@@ -109,7 +105,7 @@ class nn_model:
         self.loss_func = loss_func
 
         #self.eval()
-        self.cross_val_custom()
+        self.cross_val()
 
     def create_model(self):
         # different metric functions
@@ -147,7 +143,6 @@ class nn_model:
 
         concat = concatenate([fw, bw], axis=1)
         pool_size_input = concat.shape[1]
-        #concat_relu = Dense(1)(concat)
 
         concat_relu = ReLU()(concat)
 
@@ -242,10 +237,7 @@ class nn_model:
         # 90% Train, 10% Test
         x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.1, random_state=seed)
         x2_train, x2_test, y2_train, y2_test = train_test_split(rc_fasta, readout, test_size=0.1, random_state=seed)
-        #assert x1_test == x2_test
-        #assert y1_test == y2_test
 
-        #model = self.create_model()
         model, model2 = self.create_model()
 
         # change from list to numpy array
@@ -254,9 +246,8 @@ class nn_model:
         y2_train = np.asarray(y2_train)
         y2_test = np.asarray(y2_test)
 
-        # train the data
+        # Without early stopping
         #history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
-        #history_ver2 = model2.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
 
         # Early stopping
         callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
@@ -269,7 +260,7 @@ class nn_model:
         print('metric values of model.evaluate: '+ str(history2))
         print('metrics names are ' + str(model.metrics_names))
 
-    def cross_val_custom(self):
+    def cross_val(self):
         # Preprocess the data
         prep = preprocess(self.fasta_file, self.readout_file)
         dict = prep.one_hot_encode()
@@ -289,9 +280,6 @@ class nn_model:
         forward_shuffle, readout_shuffle = shuffle(fw_fasta, readout, random_state=seed)
         reverse_shuffle, readout_shuffle = shuffle(rc_fasta, readout, random_state=seed)
         readout_shuffle = np.array(readout_shuffle)
-
-        #forward_shuffle = np.ndarray.tolist(forward_shuffle)
-        #reverse_shuffle = np.ndarray.tolist(reverse_shuffle)
 
         # initialize metrics to save values
         metrics = []
