@@ -1,8 +1,8 @@
 #!/bin/bash
 
 work_dir="/project/samee/minjun/MuSeAM/regression"
-output_base_dir="${work_dir}/outs_optimizer/performance"
-par_output_dir="${work_dir}/outs_optimizer/pars"
+output_base_dir="${work_dir}/outs/performance"
+par_output_dir="${work_dir}/outs/pars"
 fasta_file="${work_dir}/sequences.fa"
 readout_file="${work_dir}/wt_readout.dat"
 train_file="${work_dir}/train.py"
