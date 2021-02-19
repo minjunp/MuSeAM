@@ -203,18 +203,10 @@ class nn_model:
         if self.loss_func == 'mse':
             model.compile(loss='mean_squared_error', optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
             model2.compile(loss='mean_squared_error', optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
-        elif self.loss_func == 'poisson':
-            loss_poisson = keras.losses.Poisson()
-            model.compile(loss=loss_poisson, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
-            model2.compile(loss=loss_poisson, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         elif self.loss_func == 'huber':
             loss_huber = keras.losses.Huber(delta=1.5)
             model.compile(loss=loss_huber, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
             model2.compile(loss=loss_huber, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
-        elif self.loss_func == 'reduction':
-            loss_reduction = keras.losses.MeanSquaredLogarithmicError()
-            model.compile(loss=loss_reduction, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
-            model2.compile(loss=loss_reduction, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         else:
             raise NameError('Unrecognized Loss Function')
 
@@ -240,7 +232,7 @@ class nn_model:
             readout = np.ndarray.tolist(readout)
 
         seed = random.randint(1,1000)
-        seed = 460
+        #seed = 460
 
         # 90% Train, 10% Test
         x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.1, random_state=seed)
@@ -265,16 +257,7 @@ class nn_model:
         history2 = model.evaluate({'forward': x1_test, 'reverse': x2_test}, y1_test)
         pred = model.predict({'forward': x1_test, 'reverse': x2_test})
 
-        # plot true vs pred
-        plt.plot(pred, y1_test, 'o', markersize=3)
-        plt.xlabel('Predicted Enhancer Activity')
-        plt.ylabel('True Enhancer Activity')
-        plt.title('Huber regression model(d=1.5)')
-        plt.xlim(-0.75, 3)
-        plt.ylim(-0.75, 3)
-        plt.savefig('huber_d15.png')
-        plt.show()
-        sys.exit()
+        viz(pred, y1_test, '{} regression model'.format(self.loss_func), '{}.png'.format(self.loss_func))
 
         print("Seed number is {}".format(seed))
         print('metric values of model.evaluate: '+ str(history2))
@@ -297,6 +280,8 @@ class nn_model:
 
         # seed to reproduce results
         seed = random.randint(1,1000)
+        #seed = 460
+
         forward_shuffle, readout_shuffle = shuffle(fw_fasta, readout, random_state=seed)
         reverse_shuffle, readout_shuffle = shuffle(rc_fasta, readout, random_state=seed)
         readout_shuffle = np.array(readout_shuffle)
@@ -307,6 +292,10 @@ class nn_model:
         # Provides train/test indices to split data in train/test sets.
         kFold = StratifiedKFold(n_splits=10)
         ln = np.zeros(len(readout_shuffle))
+
+        true_vals = []
+        pred_vals = []
+
         for train, test in kFold.split(ln, ln):
             model = None
             model, model2 = self.create_model()
@@ -325,7 +314,11 @@ class nn_model:
 
             #history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
             history2 = model.evaluate({'forward': fwd_test, 'reverse': rc_test}, y_test)
-            metrics.append((history2))
+            pred = model.predict({'forward': fwd_test, 'reverse': rc_test})
+
+            metrics.append(history2)
+            true_vals.append(y_train)
+            pred_vals.appned(pred)
 
         g1 = []
         g2 = []
@@ -336,9 +329,21 @@ class nn_model:
             g2.append(r_2)
             g3.append(spearman_val)
 
+        viz(pred_vals, true_vals, '{} regression model'.format(self.loss_func), '{}.png'.format(self.loss_func))
+
         print(g2)
         print(g3)
         print('seed number = %d' %seed)
         print('Mean loss of 10-fold cv is ' + str(np.mean(g1)))
         print('Mean R_2 score of 10-fold cv is ' + str(np.mean(g2)))
         print('Mean Spearman of 10-fold cv is ' + str(np.mean(g3)))
+
+    def viz(pred, true, title_name, file_name):
+        # plot true vs pred
+        plt.plot(pred, y1_test, 'o', markersize=3)
+        plt.xlabel('Predicted Enhancer Activity')
+        plt.ylabel('True Enhancer Activity')
+        plt.title(title_name)
+        plt.xlim(-0.75, 3)
+        plt.ylim(-0.75, 3)
+        plt.savefig(figname)
