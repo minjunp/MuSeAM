@@ -21,7 +21,6 @@ def train(file_name):
 def main(argv = None):
     if argv is None:
         argv = sys.argv
-
         #input args
         fasta_file = argv[1]
         #e.g. sequences.fa
