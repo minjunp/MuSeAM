@@ -91,7 +91,7 @@ class ConvolutionLayer(Conv1D):
         return outputs
 
 class nn_model:
-    def __init__(self, fasta_file, readout_file, filters, kernel_size, pool_type, regularizer, activation_type, epochs, batch_size, loss_func):
+    def __init__(self, fasta_file, readout_file, filters, kernel_size, pool_type, regularizer, activation_type, epochs, batch_size, loss_func, optimizer):
         """initialize basic parameters"""
         self.filters = filters
         self.kernel_size = kernel_size
@@ -103,6 +103,7 @@ class nn_model:
         self.fasta_file = fasta_file
         self.readout_file = readout_file
         self.loss_func = loss_func
+        self.optimizer = optimizer
 
         #self.eval()
         self.cross_val()
@@ -136,7 +137,7 @@ class nn_model:
         reverse = keras.Input(shape=(dim_num[1],dim_num[2]), name = 'reverse')
 
         #first_layer = Conv1D(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', input_shape=(dim_num[1],dim_num[2]), use_bias = False)
-        first_layer = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', use_bias = True)
+        first_layer = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, strides=1, data_format='channels_last', use_bias = True)
 
         fw = first_layer(forward)
         bw = first_layer(reverse)
@@ -148,6 +149,7 @@ class nn_model:
 
         if self.pool_type == 'Max':
             pool_layer = MaxPooling1D(pool_size=pool_size_input)(concat_relu)
+            #pool_layer = MaxPooling1D(pool_size=12)(concat_relu)
         elif self.pool_type == 'Ave':
             pool_layer = AveragePooling1D(pool_size=pool_size_input)(concat_relu)
         elif self.pool_type == 'custom':
@@ -178,6 +180,11 @@ class nn_model:
         else:
             raise NameError('Set the pooling layer name correctly')
 
+        #layer = Conv1D(filters=128, kernel_size=12)(pool_layer)
+        #layer = Dense(16)(pool_layer)
+        #pool_size_input = layer.shape[1]
+        #layer = MaxPooling1D(pool_size=pool_size_input)(layer)
+
         # flatten the layer (None, 512)
         flat = Flatten()(pool_layer)
 
@@ -194,20 +201,20 @@ class nn_model:
         model.summary()
 
         if self.loss_func == 'mse':
-            model.compile(loss='mean_squared_error', optimizer='adam', metrics = [coeff_determination, spearman_fn])
-            model2.compile(loss='mean_squared_error', optimizer='adam', metrics = [coeff_determination, spearman_fn])
+            model.compile(loss='mean_squared_error', optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
+            model2.compile(loss='mean_squared_error', optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         elif self.loss_func == 'poisson':
             loss_poisson = keras.losses.Poisson()
-            model.compile(loss=loss_poisson, optimizer='adam', metrics = [coeff_determination, spearman_fn])
-            model2.compile(loss=loss_poisson, optimizer='adam', metrics = [coeff_determination, spearman_fn])
+            model.compile(loss=loss_poisson, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
+            model2.compile(loss=loss_poisson, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         elif self.loss_func == 'huber':
-            loss_huber = keras.losses.Huber()
-            model.compile(loss=loss_huber, optimizer='adam', metrics = [coeff_determination, spearman_fn])
-            model2.compile(loss=loss_huber, optimizer='adam', metrics = [coeff_determination, spearman_fn])
+            loss_huber = keras.losses.Huber(delta=1.5)
+            model.compile(loss=loss_huber, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
+            model2.compile(loss=loss_huber, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         elif self.loss_func == 'reduction':
             loss_reduction = keras.losses.MeanSquaredLogarithmicError()
-            model.compile(loss=loss_reduction, optimizer='adam', metrics = [coeff_determination, spearman_fn])
-            model2.compile(loss=loss_reduction, optimizer='adam', metrics = [coeff_determination, spearman_fn])
+            model.compile(loss=loss_reduction, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
+            model2.compile(loss=loss_reduction, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         else:
             raise NameError('Unrecognized Loss Function')
 
@@ -233,6 +240,7 @@ class nn_model:
             readout = np.ndarray.tolist(readout)
 
         seed = random.randint(1,1000)
+        seed = 460
 
         # 90% Train, 10% Test
         x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.1, random_state=seed)
@@ -250,11 +258,23 @@ class nn_model:
         #history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
 
         # Early stopping
-        callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
+        #callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
+        callback = EarlyStopping(monitor='val_spearman_fn', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
         history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1, callbacks = [callback])
 
         history2 = model.evaluate({'forward': x1_test, 'reverse': x2_test}, y1_test)
         pred = model.predict({'forward': x1_test, 'reverse': x2_test})
+
+        # plot true vs pred
+        plt.plot(pred, y1_test, 'o', markersize=3)
+        plt.xlabel('Predicted Enhancer Activity')
+        plt.ylabel('True Enhancer Activity')
+        plt.title('Huber regression model(d=1.5)')
+        plt.xlim(-0.75, 3)
+        plt.ylim(-0.75, 3)
+        plt.savefig('huber_d15.png')
+        plt.show()
+        sys.exit()
 
         print("Seed number is {}".format(seed))
         print('metric values of model.evaluate: '+ str(history2))
@@ -299,8 +319,9 @@ class nn_model:
             y_test = readout_shuffle[test]
 
             # Early stopping
-            callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
-            history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0, callbacks = [callback])
+            #callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
+            callback = EarlyStopping(monitor='val_spearman_fn', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
+            history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1, callbacks = [callback])
 
             #history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
             history2 = model.evaluate({'forward': fwd_test, 'reverse': rc_test}, y_test)

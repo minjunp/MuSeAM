@@ -30,13 +30,13 @@ do
       do
         for activation_type in linear
         do
-          for epochs in 100
+          for epochs in 50
           do
-            for batch_size in 61
+            for batch_size in 60
             do
-              for loss_func in mse
+              for loss_func in huber
               do
-                for optimizer in adam RMSprop SGD Adadelta Adagrad Adamax Nadam Ftrl
+                for optimizer in adam
                 do
                   let index=index+1
                   parameter_file_name="${par_output_dir}/parameters_"${index}".txt"
