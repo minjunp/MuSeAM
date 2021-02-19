@@ -318,7 +318,7 @@ class nn_model:
 
             metrics.append(history2)
             true_vals.append(y_train)
-            pred_vals.appned(pred)
+            pred_vals.appened(pred)
 
         g1 = []
         g2 = []
