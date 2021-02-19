@@ -292,7 +292,6 @@ class nn_model:
         # Provides train/test indices to split data in train/test sets.
         kFold = StratifiedKFold(n_splits=10)
         ln = np.zeros(len(readout_shuffle))
-
         true_vals = []
         pred_vals = []
 
