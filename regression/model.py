@@ -204,7 +204,7 @@ class nn_model:
             model.compile(loss='mean_squared_error', optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
             model2.compile(loss='mean_squared_error', optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         elif self.loss_func == 'huber':
-            loss_huber = keras.losses.Huber(delta=1.5)
+            loss_huber = keras.losses.Huber(delta=1)
             model.compile(loss=loss_huber, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
             model2.compile(loss=loss_huber, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         else:
@@ -257,7 +257,7 @@ class nn_model:
         history2 = model.evaluate({'forward': x1_test, 'reverse': x2_test}, y1_test)
         pred = model.predict({'forward': x1_test, 'reverse': x2_test})
 
-        viz(pred, y1_test, '{} regression model'.format(self.loss_func), '{}.png'.format(self.loss_func))
+        viz_prediction(pred, y1_test, '{} regression model'.format(self.loss_func), '{}2.png'.format(self.loss_func))
 
         print("Seed number is {}".format(seed))
         print('metric values of model.evaluate: '+ str(history2))
@@ -280,7 +280,7 @@ class nn_model:
 
         # seed to reproduce results
         seed = random.randint(1,1000)
-        #seed = 460
+        seed = 460
 
         forward_shuffle, readout_shuffle = shuffle(fw_fasta, readout, random_state=seed)
         reverse_shuffle, readout_shuffle = shuffle(rc_fasta, readout, random_state=seed)
@@ -317,8 +317,9 @@ class nn_model:
             pred = model.predict({'forward': fwd_test, 'reverse': rc_test})
 
             metrics.append(history2)
-            true_vals.append(y_train)
-            pred_vals.appned(pred)
+            pred = np.reshape(pred,len(pred))
+            true_vals.append(y_test.tolist())
+            pred_vals.append(pred.tolist())
 
         g1 = []
         g2 = []
@@ -329,7 +330,7 @@ class nn_model:
             g2.append(r_2)
             g3.append(spearman_val)
 
-        viz(pred_vals, true_vals, '{} regression model'.format(self.loss_func), '{}.png'.format(self.loss_func))
+        viz_prediction(pred_vals, true_vals, '{} delta=1 regression model (seed=460)'.format(self.loss_func), '{}_d1.png'.format(self.loss_func))
 
         print(g2)
         print(g3)
@@ -338,12 +339,12 @@ class nn_model:
         print('Mean R_2 score of 10-fold cv is ' + str(np.mean(g2)))
         print('Mean Spearman of 10-fold cv is ' + str(np.mean(g3)))
 
-    def viz(pred, true, title_name, file_name):
-        # plot true vs pred
-        plt.plot(pred, y1_test, 'o', markersize=3)
-        plt.xlabel('Predicted Enhancer Activity')
-        plt.ylabel('True Enhancer Activity')
-        plt.title(title_name)
-        plt.xlim(-0.75, 3)
-        plt.ylim(-0.75, 3)
-        plt.savefig(figname)
+def viz_prediction(pred, true, title_name, file_name):
+    # plot true vs pred
+    plt.plot(pred, true, 'o', markersize=1)
+    plt.xlabel('Predicted Enhancer Activity')
+    plt.ylabel('True Enhancer Activity')
+    plt.title(title_name)
+    plt.xlim(-0.75, 3)
+    plt.ylim(-0.75, 3)
+    plt.savefig(file_name)
