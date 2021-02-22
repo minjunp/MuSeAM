@@ -204,7 +204,7 @@ class nn_model:
             model.compile(loss='mean_squared_error', optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
             model2.compile(loss='mean_squared_error', optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         elif self.loss_func == 'huber':
-            loss_huber = keras.losses.Huber(delta=1)
+            loss_huber = keras.losses.Huber(delta=2)
             model.compile(loss=loss_huber, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
             model2.compile(loss=loss_huber, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         else:
@@ -329,14 +329,14 @@ class nn_model:
             g2.append(r_2)
             g3.append(spearman_val)
 
-        viz_prediction(pred_vals, true_vals, '{} delta=1 regression model (seed=460)'.format(self.loss_func), '{}_d1.png'.format(self.loss_func))
-
         print(g2)
         print(g3)
         print('seed number = %d' %seed)
         print('Mean loss of 10-fold cv is ' + str(np.mean(g1)))
         print('Mean R_2 score of 10-fold cv is ' + str(np.mean(g2)))
         print('Mean Spearman of 10-fold cv is ' + str(np.mean(g3)))
+
+        viz_prediction(pred_vals, true_vals, '{} Huber delta = 2 model (seed=460), spearman = {}'.format(self.loss_func, str(round(np.mean(g3),3))), '{}_2.png'.format(self.loss_func))
 
 def viz_prediction(pred, true, title_name, file_name):
     # plot true vs pred
