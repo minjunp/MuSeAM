@@ -75,15 +75,13 @@ conda env create -f environment.yml
 Activate conda environment 
 
 ```sh
-conda activate Project_Name
+conda activate museam
 ```
 
 Run model on your data
 
 ```sh
-python train.py --model XXX --data_train ./path_to_training_data/XXX.XX \
---data_predict ./path_to_predict_data/XXX.XX--output \
-./path_to_output/ --project name_of_project
+python train.py sequences.fa wt_readout.dat parameters.txt
 ```
 
 ## Demo
