@@ -7,7 +7,7 @@
 *** https://www.markdownguide.org/basic-syntax/#reference-style-links
 -->
 
-[![Contributors][contributors-shield]][contributors-url]
+[![Contributors][contributors-shield]][https://github.com/minjunp/MuSeAM/graphs/contributors]
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
@@ -16,13 +16,11 @@
 
 ```sh
 
- __  __       ____          _    __  __ 
-|  \/  |_   _/ ___|  ___   / \  |  \/  |
-| |\/| | | | \___ \ / _ \ / _ \ | |\/| |
-| |  | | |_| |___) |  __// ___ \| |  | |
-|_|  |_|\__,_|____/ \___/_/   \_\_|  |_|                           
-
-http://www.network-science.de/ascii/
+                      __  __       ____          _    __  __ 
+                      |  \/  |_   _/ ___|  ___   / \  |  \/  |
+                      | |\/| | | | \___ \ / _ \ / _ \ | |\/| |
+                      | |  | | |_| |___) |  __// ___ \| |  | |
+                      |_|  |_|\__,_|____/ \___/_/   \_\_|  |_|                           
 
 ```
 
