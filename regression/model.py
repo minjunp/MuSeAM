@@ -6,17 +6,13 @@ import os
 import json
 import csv
 import pandas
-
-# specifically for model visualization
 import keras
-#import pydot as pyd
 
 from keras.utils.vis_utils import model_to_dot
 
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, AveragePooling1D, BatchNormalization, Activation, concatenate, ReLU
-#import keras
-#from keras.utils.generic_utils import get_custom_objects
+
 from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
 from keras.utils.vis_utils import plot_model
 from sklearn.preprocessing import StandardScaler
@@ -26,7 +22,6 @@ from sklearn.metrics import r2_score
 from tensorflow.keras import regularizers
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score, KFold
 import tensorflow as tf
-#from tensorflow.nn import avg_pool1d
 from scipy.stats import spearmanr, pearsonr
 
 import matplotlib.pyplot as plt
@@ -62,7 +57,6 @@ class ConvolutionLayer(Conv1D):
 
       ## shape of self.kernel is (12, 4, 512)
       ##the type of self.kernel is <class 'tensorflow.python.ops.resource_variable_ops.ResourceVariable'>
-        print("self.run value is", self.run_value)
         if self.run_value > 2:
 
             x_tf = self.kernel  ##x_tf after reshaping is a tensor and not a weight variable :(
@@ -196,25 +190,27 @@ class nn_model:
             raise NameError('Set the regularizer name correctly')
 
         model = keras.Model(inputs=[forward, reverse], outputs=outputs)
-        model2 = keras.Model(inputs=[forward, reverse], outputs=pool_layer)
 
         model.summary()
 
         if self.loss_func == 'mse':
             model.compile(loss='mean_squared_error', optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
-            model2.compile(loss='mean_squared_error', optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         elif self.loss_func == 'huber':
             loss_huber = keras.losses.Huber(delta=1)
             model.compile(loss=loss_huber, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
-            model2.compile(loss=loss_huber, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
+        elif self.loss_func == 'mae':
+            loss_mae = keras.losses.MeanAbsoluteError()
+            model.compile(loss=loss_mae, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         else:
             raise NameError('Unrecognized Loss Function')
 
-        return model, model2
+        return model
 
     def eval(self):
+
         # Preprocess the data to one-hot encoded vector
         prep = preprocess(self.fasta_file, self.readout_file)
+
         dict = prep.one_hot_encode()
 
         # if want dinucleotide sequences
@@ -238,13 +234,14 @@ class nn_model:
         x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.1, random_state=seed)
         x2_train, x2_test, y2_train, y2_test = train_test_split(rc_fasta, readout, test_size=0.1, random_state=seed)
 
-        model, model2 = self.create_model()
+        model = self.create_model()
 
         # change from list to numpy array
         y1_train = np.asarray(y1_train)
         y1_test = np.asarray(y1_test)
         y2_train = np.asarray(y2_train)
         y2_test = np.asarray(y2_test)
+
 
         # Without early stopping
         #history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
@@ -257,7 +254,7 @@ class nn_model:
         history2 = model.evaluate({'forward': x1_test, 'reverse': x2_test}, y1_test)
         pred = model.predict({'forward': x1_test, 'reverse': x2_test})
 
-        viz_prediction(pred, y1_test, '{} regression model'.format(self.loss_func), '{}2.png'.format(self.loss_func))
+        #viz_prediction(pred, y1_test, '{} regression model'.format(self.loss_func), '{}2.png'.format(self.loss_func))
 
         print("Seed number is {}".format(seed))
         print('metric values of model.evaluate: '+ str(history2))
@@ -280,7 +277,7 @@ class nn_model:
 
         # seed to reproduce results
         seed = random.randint(1,1000)
-        seed = 460
+        #seed = 460
 
         forward_shuffle, readout_shuffle = shuffle(fw_fasta, readout, random_state=seed)
         reverse_shuffle, readout_shuffle = shuffle(rc_fasta, readout, random_state=seed)
@@ -297,7 +294,7 @@ class nn_model:
 
         for train, test in kFold.split(ln, ln):
             model = None
-            model, model2 = self.create_model()
+            model = self.create_model()
 
             fwd_train = forward_shuffle[train]
             fwd_test = forward_shuffle[test]
@@ -329,7 +326,7 @@ class nn_model:
             g2.append(r_2)
             g3.append(spearman_val)
 
-        viz_prediction(pred_vals, true_vals, '{} delta=1 regression model (seed=460)'.format(self.loss_func), '{}_d1.png'.format(self.loss_func))
+        #viz_prediction(pred_vals, true_vals, '{} delta=1 regression model (seed=460)'.format(self.loss_func), '{}_d1.png'.format(self.loss_func))
 
         print(g2)
         print(g3)

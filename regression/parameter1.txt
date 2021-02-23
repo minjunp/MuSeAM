@@ -3,7 +3,7 @@ kernel_size 12
 pool_type Max
 regularizer L_1
 activation_type linear
-epochs 1
+epochs 30
 batch_size 60
-loss_func huber
+loss_func mae
 optimizer adam
