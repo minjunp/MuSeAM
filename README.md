@@ -36,7 +36,7 @@
   </a>
 
   <p align="center">
-     Multinomial Convolutions for Joint Modeling of Sequence Motifs and Enhancer Activities
+     * Multinomial Convolutions for Joint Modeling of Sequence Motifs and Enhancer Activities *
     <br />
     <br />
     <br />
