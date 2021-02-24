@@ -207,6 +207,9 @@ class nn_model:
             loss_huber = keras.losses.Huber(delta=2)
             model.compile(loss=loss_huber, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
             model2.compile(loss=loss_huber, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
+        elif self.loss_func == 'mae':
+            loss_mae = keras.losses.MeanAbsoluteError()
+            model.compile(loss=loss_mae, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         else:
             raise NameError('Unrecognized Loss Function')
 
@@ -257,7 +260,7 @@ class nn_model:
         history2 = model.evaluate({'forward': x1_test, 'reverse': x2_test}, y1_test)
         pred = model.predict({'forward': x1_test, 'reverse': x2_test})
 
-        viz_prediction(pred, y1_test, '{} regression model'.format(self.loss_func), '{}2.png'.format(self.loss_func))
+        #viz_prediction(pred, y1_test, '{} regression model'.format(self.loss_func), '{}2.png'.format(self.loss_func))
 
         print("Seed number is {}".format(seed))
         print('metric values of model.evaluate: '+ str(history2))
@@ -280,7 +283,7 @@ class nn_model:
 
         # seed to reproduce results
         seed = random.randint(1,1000)
-        seed = 460
+        #seed = 460
 
         forward_shuffle, readout_shuffle = shuffle(fw_fasta, readout, random_state=seed)
         reverse_shuffle, readout_shuffle = shuffle(rc_fasta, readout, random_state=seed)
@@ -307,7 +310,6 @@ class nn_model:
             y_test = readout_shuffle[test]
 
             # Early stopping
-            #callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
             callback = EarlyStopping(monitor='val_spearman_fn', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
             history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1, callbacks = [callback])
 
@@ -336,7 +338,7 @@ class nn_model:
         print('Mean R_2 score of 10-fold cv is ' + str(np.mean(g2)))
         print('Mean Spearman of 10-fold cv is ' + str(np.mean(g3)))
 
-        viz_prediction(pred_vals, true_vals, '{} Huber delta = 2 model (seed=460), spearman = {}'.format(self.loss_func, str(round(np.mean(g3),3))), '{}_2.png'.format(self.loss_func))
+        viz_prediction(pred_vals, true_vals, '{} model, spearman = {}'.format(self.loss_func, str(round(np.mean(g3),3))), './pred_vs_true/{}_{}.png'.format(self.loss_func, seed))
 
 def viz_prediction(pred, true, title_name, file_name):
     # plot true vs pred
