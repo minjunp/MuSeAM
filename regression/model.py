@@ -35,6 +35,37 @@ from tensorflow import keras
 from keras.models import Model
 from numpy import newaxis
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
+#Create new loss function (Rank mse)
+@tf.function()
+def rank_mse(yTrue, yPred):
+  lambda_value=0.25
+  #pass lambda value as tensor
+  lambda_value = tf.convert_to_tensor(lambda_value,dtype="float32")
+
+  #get vector ranks
+  rank_yTrue = tf.argsort(tf.argsort(yTrue))
+  rank_yPred = tf.argsort(tf.argsort(yPred))
+
+  #calculate losses
+  mse = tf.reduce_mean(tf.square(tf.subtract(yTrue,yPred)))
+  rank_mse = tf.reduce_mean(tf.square(tf.subtract(rank_yTrue,rank_yPred)))
+
+  #take everything to same dtype
+  mse = tf.cast(mse,dtype="float32")
+  rank_mse = tf.cast(rank_mse,dtype="float32")
+
+  #(1 - lambda value)* mse(part a of loss)
+  loss_a = tf.multiply(tf.subtract(tf.ones(1,dtype="float32"),lambda_value),mse)
+  #lambda value * rank_mse (part b of loss)
+  loss_b = tf.multiply(lambda_value,rank_mse)
+  #final loss
+  loss = tf.add(loss_a,loss_b)
+
+  return loss
+
 class ConvolutionLayer(Conv1D):
     def __init__(self, filters,
                  kernel_size,
@@ -201,6 +232,8 @@ class nn_model:
         elif self.loss_func == 'mae':
             loss_mae = keras.losses.MeanAbsoluteError()
             model.compile(loss=loss_mae, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
+        elif self.loss_func == 'rank_mse':
+            model.compile(loss=rank_mse, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         else:
             raise NameError('Unrecognized Loss Function')
 
@@ -304,9 +337,9 @@ class nn_model:
             y_test = readout_shuffle[test]
 
             # Early stopping
-            #callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
-            callback = EarlyStopping(monitor='val_spearman_fn', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
-            history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1, callbacks = [callback])
+            callback = EarlyStopping(monitor='loss', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
+            #callback = EarlyStopping(monitor='val_spearman_fn', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
+            history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0, callbacks = [callback])
 
             #history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
             history2 = model.evaluate({'forward': fwd_test, 'reverse': rc_test}, y_test)
