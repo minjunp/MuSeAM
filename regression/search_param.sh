@@ -3,6 +3,7 @@
 work_dir="/project/samee/minjun/MuSeAM/regression"
 output_base_dir="${work_dir}/outs/performance"
 par_output_dir="${work_dir}/outs/pars"
+true_pred_dir="${work_dir}/outs/true_pred"
 fasta_file="${work_dir}/sequences.fa"
 readout_file="${work_dir}/wt_readout.dat"
 train_file="${work_dir}/train.py"
@@ -13,6 +14,7 @@ train_file="${work_dir}/train.py"
 #fi
 mkdir -p ${output_base_dir}
 mkdir -p ${par_output_dir}
+mkdir -p ${true_pred_dir}
 
 #exec_file="${work_dir}/parameter_search.sh"
 #echo "#!/bin/bash" > ${exec_file}
@@ -30,13 +32,13 @@ do
       do
         for activation_type in linear
         do
-          for epochs in 15 20 25 30 35 40 45 50
+          for epochs in 1 2 3
           do
             for batch_size in 60
             do
-              for loss_func in rank_mse
+              for loss_func in mse
               do
-                for optimizer in adam mae
+                for optimizer in adam
                 do
                   let index=index+1
                   parameter_file_name="${par_output_dir}/parameters_"${index}".txt"
@@ -50,8 +52,12 @@ do
                   echo "loss_func "${loss_func} >> ${parameter_file_name}
                   echo "optimizer "${optimizer} >> ${parameter_file_name}
                   output_dir="${output_base_dir}/out_${index}"
+                  
                   mv true_vals.txt true_vals_${ind}.txt
                   mv pred_vals.txt pred_vals_${ind}.txt
+
+                  mv true_vals_${ind}.txt ${true_pred_dir}
+                  mv pred_vals_${ind}.txt ${true_pred_dir}
                   #if [ -d ${output_dir} ]
                   #then
                   #  rm -rf ${output_dir}
