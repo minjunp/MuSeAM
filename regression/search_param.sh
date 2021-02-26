@@ -32,11 +32,11 @@ do
       do
         for activation_type in linear
         do
-          for epochs in 1 2 3
+          for epochs in 30 40 50 60
           do
             for batch_size in 60
             do
-              for loss_func in mse
+              for loss_func in mse rank_mse
               do
                 for optimizer in adam
                 do
@@ -55,14 +55,8 @@ do
 
                   mv true_vals.txt true_vals_${index}.txt
                   mv pred_vals.txt pred_vals_${index}.txt
-
                   mv true_vals_${index}.txt ${true_pred_dir}
                   mv pred_vals_${index}.txt ${true_pred_dir}
-                  #if [ -d ${output_dir} ]
-                  #then
-                  #  rm -rf ${output_dir}
-                  #fi
-                  #mkdir -p ${output_dir}
 
                   python ${train_file} ${fasta_file} ${readout_file} ${parameter_file_name} > ${output_base_dir}/${index}.txt
 

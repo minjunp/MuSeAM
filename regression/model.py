@@ -312,6 +312,10 @@ class nn_model:
         seed = random.randint(1,1000)
         #seed = 460
 
+        zipped = zip(fw_fasta, rc_fasta, readout)
+        print(zipped)
+        sys.exit()
+
         forward_shuffle, readout_shuffle = shuffle(fw_fasta, readout, random_state=seed)
         reverse_shuffle, readout_shuffle = shuffle(rc_fasta, readout, random_state=seed)
         readout_shuffle = np.array(readout_shuffle)
