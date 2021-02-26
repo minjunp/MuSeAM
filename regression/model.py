@@ -131,7 +131,8 @@ class nn_model:
         self.optimizer = optimizer
 
         #self.eval()
-        self.cross_val()
+        #self.cross_val()
+        self.cross_val_systematic()
 
     def create_model(self):
         # different metric functions
@@ -312,8 +313,87 @@ class nn_model:
         seed = random.randint(1,1000)
         #seed = 460
 
-        zipped = zip(fw_fasta, rc_fasta, readout)
-        print(zipped)
+        forward_shuffle, readout_shuffle = shuffle(fw_fasta, readout, random_state=seed)
+        reverse_shuffle, readout_shuffle = shuffle(rc_fasta, readout, random_state=seed)
+        readout_shuffle = np.array(readout_shuffle)
+
+        # initialize metrics to save values
+        metrics = []
+
+        # Provides train/test indices to split data in train/test sets.
+        kFold = StratifiedKFold(n_splits=10)
+        ln = np.zeros(len(readout_shuffle))
+        true_vals = []
+        pred_vals = []
+
+        for train, test in kFold.split(ln, ln):
+            model = None
+            model = self.create_model()
+
+            fwd_train = forward_shuffle[train]
+            fwd_test = forward_shuffle[test]
+            rc_train = reverse_shuffle[train]
+            rc_test = reverse_shuffle[test]
+            y_train = readout_shuffle[train]
+            y_test = readout_shuffle[test]
+
+            # Early stopping
+            callback = EarlyStopping(monitor='loss', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
+            #callback = EarlyStopping(monitor='val_spearman_fn', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
+            history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0, callbacks = [callback])
+
+            #history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
+            history2 = model.evaluate({'forward': fwd_test, 'reverse': rc_test}, y_test)
+            pred = model.predict({'forward': fwd_test, 'reverse': rc_test})
+
+            metrics.append(history2)
+            pred = np.reshape(pred,len(pred))
+            true_vals.append(y_test.tolist())
+            pred_vals.append(pred.tolist())
+
+        g1 = []
+        g2 = []
+        g3 = []
+        for i in metrics:
+            loss, r_2, spearman_val = i
+            g1.append(loss)
+            g2.append(r_2)
+            g3.append(spearman_val)
+
+        np.savetxt('true_vals.txt', true_vals)
+        np.savetxt('pred_vals.txt', pred_vals)
+        #viz_prediction(pred_vals, true_vals, '{} delta=1 regression model (seed=460)'.format(self.loss_func), '{}_d1.png'.format(self.loss_func))
+
+        print(g2)
+        print(g3)
+        print('seed number = %d' %seed)
+        print('Mean loss of 10-fold cv is ' + str(np.mean(g1)))
+        print('Mean R_2 score of 10-fold cv is ' + str(np.mean(g2)))
+        print('Mean Spearman of 10-fold cv is ' + str(np.mean(g3)))
+
+    def cross_val_systematic(self):
+        # Preprocess the data
+        prep = preprocess(self.fasta_file, self.readout_file)
+        dict = prep.one_hot_encode()
+        # If want dinucleotide sequences
+        #dict = prep.dinucleotide_encode()
+
+        fw_fasta = dict["forward"]
+        rc_fasta = dict["reverse"]
+        readout = dict["readout"]
+
+        if self.activation_type == 'linear':
+            readout = np.log2(readout)
+            readout = np.ndarray.tolist(readout)
+
+        # seed to reproduce results
+        seed = random.randint(1,1000)
+        #seed = 460
+
+        zipped = list(zip(fw_fasta, rc_fasta, readout))
+        # Using sorted and lambda
+        zipped = sorted(zipped, key = lambda x: x[2])
+        print(zipped[2])
         sys.exit()
 
         forward_shuffle, readout_shuffle = shuffle(fw_fasta, readout, random_state=seed)

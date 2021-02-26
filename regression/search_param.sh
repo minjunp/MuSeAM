@@ -53,12 +53,12 @@ do
                   echo "optimizer "${optimizer} >> ${parameter_file_name}
                   output_dir="${output_base_dir}/out_${index}"
 
+                  python ${train_file} ${fasta_file} ${readout_file} ${parameter_file_name} > ${output_base_dir}/${index}.txt
+
                   mv true_vals.txt true_vals_${index}.txt
                   mv pred_vals.txt pred_vals_${index}.txt
                   mv true_vals_${index}.txt ${true_pred_dir}
                   mv pred_vals_${index}.txt ${true_pred_dir}
-
-                  python ${train_file} ${fasta_file} ${readout_file} ${parameter_file_name} > ${output_base_dir}/${index}.txt
 
                   #echo "output_dir "${output_dir} >> ${parameter_file_name}
               		#echo "sleep 5m" >> ${exec_file}
