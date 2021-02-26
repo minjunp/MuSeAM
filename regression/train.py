@@ -21,7 +21,7 @@ def train(file_name):
 def main(argv = None):
     if argv is None:
         argv = sys.argv
-        #input args
+        #input argszw
         fasta_file = argv[1]
         #e.g. sequences.fa
         readout_file = argv[2]

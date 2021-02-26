@@ -359,6 +359,8 @@ class nn_model:
             g2.append(r_2)
             g3.append(spearman_val)
 
+        np.savetxt('true_vals.txt'.format(seed), true_vals)
+        np.savetxt('pred_vals.txt'.format(seed), pred_vals)
         #viz_prediction(pred_vals, true_vals, '{} delta=1 regression model (seed=460)'.format(self.loss_func), '{}_d1.png'.format(self.loss_func))
 
         print(g2)

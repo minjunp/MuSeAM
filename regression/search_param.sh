@@ -50,6 +50,8 @@ do
                   echo "loss_func "${loss_func} >> ${parameter_file_name}
                   echo "optimizer "${optimizer} >> ${parameter_file_name}
                   output_dir="${output_base_dir}/out_${index}"
+                  mv true_vals.txt true_vals_${ind}.txt
+                  mv pred_vals.txt pred_vals_${ind}.txt
                   #if [ -d ${output_dir} ]
                   #then
                   #  rm -rf ${output_dir}
