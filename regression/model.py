@@ -131,8 +131,8 @@ class nn_model:
         self.optimizer = optimizer
 
         #self.eval()
-        #self.cross_val()
-        self.cross_val_systematic()
+        self.cross_val()
+        #self.cross_val_binning()
 
     def create_model(self):
         # different metric functions
@@ -162,7 +162,7 @@ class nn_model:
         forward = keras.Input(shape=(dim_num[1],dim_num[2]), name = 'forward')
         reverse = keras.Input(shape=(dim_num[1],dim_num[2]), name = 'reverse')
 
-        #first_layer = Conv1D(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', input_shape=(dim_num[1],dim_num[2]), use_bias = False)
+        #first_layer = Conv1D(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', input_shape=(dim_num[1],dim_num[2]), use_bias = True)
         first_layer = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, strides=1, data_format='channels_last', use_bias = True)
 
         fw = first_layer(forward)
@@ -338,11 +338,11 @@ class nn_model:
             y_test = readout_shuffle[test]
 
             # Early stopping
-            callback = EarlyStopping(monitor='loss', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
+            #callback = EarlyStopping(monitor='loss', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
             #callback = EarlyStopping(monitor='val_spearman_fn', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
-            history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0, callbacks = [callback])
+            #history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0, callbacks = [callback])
 
-            #history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
+            history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
             history2 = model.evaluate({'forward': fwd_test, 'reverse': rc_test}, y_test)
             pred = model.predict({'forward': fwd_test, 'reverse': rc_test})
 
@@ -360,8 +360,8 @@ class nn_model:
             g2.append(r_2)
             g3.append(spearman_val)
 
-        np.savetxt('true_vals.txt', true_vals)
-        np.savetxt('pred_vals.txt', pred_vals)
+        #np.savetxt('true_vals.txt', true_vals)
+        #np.savetxt('pred_vals.txt', pred_vals)
         #viz_prediction(pred_vals, true_vals, '{} delta=1 regression model (seed=460)'.format(self.loss_func), '{}_d1.png'.format(self.loss_func))
 
         print(g2)
@@ -371,7 +371,7 @@ class nn_model:
         print('Mean R_2 score of 10-fold cv is ' + str(np.mean(g2)))
         print('Mean Spearman of 10-fold cv is ' + str(np.mean(g3)))
 
-    def cross_val_systematic(self):
+    def cross_val_binning(self):
         # Preprocess the data
         prep = preprocess(self.fasta_file, self.readout_file)
         dict = prep.one_hot_encode()
@@ -384,28 +384,28 @@ class nn_model:
 
         if self.activation_type == 'linear':
             readout = np.log2(readout)
-            readout = np.ndarray.tolist(readout)
 
-        # seed to reproduce results
-        seed = random.randint(1,1000)
-        #seed = 460
+        # Returns the indices that would sort an array.
+        x = np.argsort(readout)
+        ind = []
 
-        zipped = list(zip(fw_fasta, rc_fasta, readout))
-        # Using sorted and lambda
-        zipped = sorted(zipped, key = lambda x: x[2])
-        print(zipped[2])
-        sys.exit()
+        num = 10
+        for i in range(num):
+            for j in range(int(len(x)/num)):
+                id = i + j * num
+                ind.append(x[id])
 
-        forward_shuffle, readout_shuffle = shuffle(fw_fasta, readout, random_state=seed)
-        reverse_shuffle, readout_shuffle = shuffle(rc_fasta, readout, random_state=seed)
-        readout_shuffle = np.array(readout_shuffle)
+        forward_bin = fw_fasta[ind]
+        reverse_bin = rc_fasta[ind]
+        readout_bin = readout[ind]
+        #readout_bin = np.array(readout_bin)
 
         # initialize metrics to save values
         metrics = []
 
         # Provides train/test indices to split data in train/test sets.
         kFold = StratifiedKFold(n_splits=10)
-        ln = np.zeros(len(readout_shuffle))
+        ln = np.zeros(len(readout_bin))
         true_vals = []
         pred_vals = []
 
@@ -413,19 +413,19 @@ class nn_model:
             model = None
             model = self.create_model()
 
-            fwd_train = forward_shuffle[train]
-            fwd_test = forward_shuffle[test]
-            rc_train = reverse_shuffle[train]
-            rc_test = reverse_shuffle[test]
-            y_train = readout_shuffle[train]
-            y_test = readout_shuffle[test]
+            fwd_train = forward_bin[train]
+            fwd_test = forward_bin[test]
+            rc_train = reverse_bin[train]
+            rc_test = reverse_bin[test]
+            y_train = readout_bin[train]
+            y_test = readout_bin[test]
 
             # Early stopping
-            callback = EarlyStopping(monitor='loss', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
+            #callback = EarlyStopping(monitor='loss', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
             #callback = EarlyStopping(monitor='val_spearman_fn', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
-            history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0, callbacks = [callback])
+            #history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0, callbacks = [callback])
 
-            #history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
+            history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
             history2 = model.evaluate({'forward': fwd_test, 'reverse': rc_test}, y_test)
             pred = model.predict({'forward': fwd_test, 'reverse': rc_test})
 
@@ -443,8 +443,8 @@ class nn_model:
             g2.append(r_2)
             g3.append(spearman_val)
 
-        np.savetxt('true_vals.txt', true_vals)
-        np.savetxt('pred_vals.txt', pred_vals)
+        #np.savetxt('true_vals.txt', true_vals)
+        #np.savetxt('pred_vals.txt', pred_vals)
         #viz_prediction(pred_vals, true_vals, '{} delta=1 regression model (seed=460)'.format(self.loss_func), '{}_d1.png'.format(self.loss_func))
 
         print(g2)
