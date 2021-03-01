@@ -5,5 +5,5 @@ regularizer L_1
 activation_type linear
 epochs 17
 batch_size 59
-loss_func rank_mse
+loss_func mse
 optimizer adam
