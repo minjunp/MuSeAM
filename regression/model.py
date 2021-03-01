@@ -169,7 +169,7 @@ class nn_model:
         conv1 = first_layer(forward)
         #bw = first_layer(reverse)
 
-        batch_norm1 = BatchNormalization(conv1)
+        batch_norm1 = BatchNormalization()(conv1)
 
         relu = ReLU()(batch_norm1)
 
@@ -177,7 +177,7 @@ class nn_model:
 
         conv2 = Conv1D(filters=200, kernel_size=11)(max1)
 
-        batch_norm2 = BatchNormalization(conv2)
+        batch_norm2 = BatchNormalization()(conv2)
 
         relu2 = ReLU()(batch_norm2)
 
@@ -185,7 +185,7 @@ class nn_model:
 
         conv3 = Conv1D(filters=200, kernel_size=7)(max2)
 
-        batch_norm3 = BatchNormalization(conv3)
+        batch_norm3 = BatchNormalization()(conv3)
 
         relu3 = ReLU()(batch_norm3)
 
@@ -197,13 +197,13 @@ class nn_model:
 
         relu4 = ReLU()(linear1)
 
-        dropout1 = Dropout(rate=0.3)
+        dropout1 = Dropout(rate=0.3)(relu4)
 
         linear2 = Dense(1000)(dropout1)
 
         relu5 = ReLU()(linear2)
 
-        dropout2 = Dropout(rate=0.3)
+        dropout2 = Dropout(rate=0.3)(relu5)
 
         linear3 = Dense(164)(dropout2)
 
@@ -318,7 +318,6 @@ class nn_model:
         for train, test in kFold.split(ln, ln):
             model = None
             model = self.create_model()
-            sys.exit()
 
             fwd_train = forward_shuffle[train]
             fwd_test = forward_shuffle[test]
