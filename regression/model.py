@@ -191,9 +191,9 @@ class nn_model:
 
         max3 = MaxPooling1D(pool_size=4)(relu3)
 
-        #flat = Flatten()(max3)
+        flat = Flatten()(max3)
 
-        linear1 = Dense(1000)(max3)
+        linear1 = Dense(1000)(flat)
 
         relu4 = ReLU()(linear1)
 
@@ -271,10 +271,10 @@ class nn_model:
         # Early stopping
         #callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
         callback = EarlyStopping(monitor='val_spearman_fn', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
-        history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1, callbacks = [callback])
+        history = model.fit({'forward': x1_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1, callbacks = [callback])
 
-        history2 = model.evaluate({'forward': x1_test, 'reverse': x2_test}, y1_test)
-        pred = model.predict({'forward': x1_test, 'reverse': x2_test})
+        history2 = model.evaluate({'forward': x1_test}, y1_test)
+        pred = model.predict({'forward': x1_test})
 
         #viz_prediction(pred, y1_test, '{} regression model'.format(self.loss_func), '{}2.png'.format(self.loss_func))
 
@@ -331,6 +331,7 @@ class nn_model:
             #callback = EarlyStopping(monitor='val_spearman_fn', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
             #history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0, callbacks = [callback])
 
+            #history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
             history = model.fit({'forward': fwd_train, 'reverse': rc_train}, y_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
             history2 = model.evaluate({'forward': fwd_test, 'reverse': rc_test}, y_test)
             pred = model.predict({'forward': fwd_test, 'reverse': rc_test})
