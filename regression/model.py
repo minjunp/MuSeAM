@@ -38,34 +38,6 @@ from numpy import newaxis
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-#Create new loss function (Rank mse)
-@tf.function()
-def rank_mse(yTrue, yPred):
-  lambda_value=0.25
-  #pass lambda value as tensor
-  lambda_value = tf.convert_to_tensor(lambda_value,dtype="float32")
-
-  #get vector ranks
-  rank_yTrue = tf.argsort(tf.argsort(yTrue))
-  rank_yPred = tf.argsort(tf.argsort(yPred))
-
-  #calculate losses
-  mse = tf.reduce_mean(tf.square(tf.subtract(yTrue,yPred)))
-  rank_mse = tf.reduce_mean(tf.square(tf.subtract(rank_yTrue,rank_yPred)))
-
-  #take everything to same dtype
-  mse = tf.cast(mse,dtype="float32")
-  rank_mse = tf.cast(rank_mse,dtype="float32")
-
-  #(1 - lambda value)* mse(part a of loss)
-  loss_a = tf.multiply(tf.subtract(tf.ones(1,dtype="float32"),lambda_value),mse)
-  #lambda value * rank_mse (part b of loss)
-  loss_b = tf.multiply(lambda_value,rank_mse)
-  #final loss
-  loss = tf.add(loss_a,loss_b)
-
-  return loss
-
 class ConvolutionLayer(Conv1D):
     def __init__(self, filters,
                  kernel_size,
@@ -143,6 +115,33 @@ class nn_model:
         def spearman_fn(y_true, y_pred):
             return tf.py_function(spearmanr, [tf.cast(y_pred, tf.float32),
                    tf.cast(y_true, tf.float32)], Tout=tf.float32)
+        #Create new loss function (Rank mse)
+        @tf.function()
+        def rank_mse(yTrue, yPred):
+          lambda_value=0.25
+          #pass lambda value as tensor
+          lambda_value = tf.convert_to_tensor(lambda_value,dtype="float32")
+
+          #get vector ranks
+          rank_yTrue = tf.argsort(tf.argsort(yTrue))
+          rank_yPred = tf.argsort(tf.argsort(yPred))
+
+          #calculate losses
+          mse = tf.reduce_mean(tf.square(tf.subtract(yTrue,yPred)))
+          rank_mse = tf.reduce_mean(tf.square(tf.subtract(rank_yTrue,rank_yPred)))
+
+          #take everything to same dtype
+          mse = tf.cast(mse,dtype="float32")
+          rank_mse = tf.cast(rank_mse,dtype="float32")
+
+          #(1 - lambda value)* mse(part a of loss)
+          loss_a = tf.multiply(tf.subtract(tf.ones(1,dtype="float32"),lambda_value),mse)
+          #lambda value * rank_mse (part b of loss)
+          loss_b = tf.multiply(lambda_value,rank_mse)
+          #final loss
+          loss = tf.add(loss_a,loss_b)
+
+          return loss
 
         # building model
         prep = preprocess(self.fasta_file, self.readout_file)
@@ -311,7 +310,7 @@ class nn_model:
 
         # seed to reproduce results
         seed = random.randint(1,1000)
-        #seed = 460
+        seed = 460
 
         forward_shuffle, readout_shuffle = shuffle(fw_fasta, readout, random_state=seed)
         reverse_shuffle, readout_shuffle = shuffle(rc_fasta, readout, random_state=seed)
@@ -387,8 +386,8 @@ class nn_model:
 
         # Returns the indices that would sort an array.
         x = np.argsort(readout)
+        """
         ind = []
-
         num = 10
         for i in range(num):
             for j in range(int(len(x)/num)):
@@ -398,7 +397,10 @@ class nn_model:
         forward_bin = fw_fasta[ind]
         reverse_bin = rc_fasta[ind]
         readout_bin = readout[ind]
-        #readout_bin = np.array(readout_bin)
+        """
+        forward_bin = fw_fasta[x]
+        reverse_bin = rc_fasta[x]
+        readout_bin = readout[x]
 
         # initialize metrics to save values
         metrics = []
@@ -445,11 +447,10 @@ class nn_model:
 
         #np.savetxt('true_vals.txt', true_vals)
         #np.savetxt('pred_vals.txt', pred_vals)
-        #viz_prediction(pred_vals, true_vals, '{} delta=1 regression model (seed=460)'.format(self.loss_func), '{}_d1.png'.format(self.loss_func))
+        viz_prediction(pred_vals, true_vals, '{} regression model'.format(self.loss_func), '{}_binning_ascending.png'.format(self.loss_func))
 
         print(g2)
         print(g3)
-        print('seed number = %d' %seed)
         print('Mean loss of 10-fold cv is ' + str(np.mean(g1)))
         print('Mean R_2 score of 10-fold cv is ' + str(np.mean(g2)))
         print('Mean Spearman of 10-fold cv is ' + str(np.mean(g3)))
