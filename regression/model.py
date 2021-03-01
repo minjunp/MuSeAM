@@ -11,7 +11,7 @@ import keras
 from keras.utils.vis_utils import model_to_dot
 
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, AveragePooling1D, BatchNormalization, Activation, concatenate, ReLU
+from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, AveragePooling1D, BatchNormalization, Activation, concatenate, ReLU, Dropout
 
 from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
 from keras.utils.vis_utils import plot_model
@@ -161,66 +161,55 @@ class nn_model:
         forward = keras.Input(shape=(dim_num[1],dim_num[2]), name = 'forward')
         reverse = keras.Input(shape=(dim_num[1],dim_num[2]), name = 'reverse')
 
-        #first_layer = Conv1D(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', input_shape=(dim_num[1],dim_num[2]), use_bias = True)
-        first_layer = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, strides=1, data_format='channels_last', use_bias = True)
+        #first_layer = Conv1D(filters=300, kernel_size=19, data_format='channels_last', input_shape=(dim_num[1],dim_num[2]), use_bias = True)
+        first_layer = Conv1D(filters=300, kernel_size=19)
 
-        fw = first_layer(forward)
-        bw = first_layer(reverse)
+        #first_layer = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, strides=1, data_format='channels_last', use_bias = True)
 
-        concat = concatenate([fw, bw], axis=1)
-        pool_size_input = concat.shape[1]
+        conv1 = first_layer(forward)
+        #bw = first_layer(reverse)
 
-        concat_relu = ReLU()(concat)
+        batch_norm1 = BatchNormalization(conv1)
 
-        if self.pool_type == 'Max':
-            pool_layer = MaxPooling1D(pool_size=pool_size_input)(concat_relu)
-            #pool_layer = MaxPooling1D(pool_size=12)(concat_relu)
-        elif self.pool_type == 'Ave':
-            pool_layer = AveragePooling1D(pool_size=pool_size_input)(concat_relu)
-        elif self.pool_type == 'custom':
-            def out_shape(input_shape):
-                shape = list(input_shape)
-                print(input_shape)
-                shape[0] = 10
-                return tuple(shape)
-            #model.add(Lambda(top_k, arguments={'k': 10}))
-            def top_k(inputs, k):
-                # tf.nn.top_k Finds values and indices of the k largest entries for the last dimension
-                print(inputs.shape)
-                inputs2 = tf.transpose(inputs, [0,2,1])
-                new_vals = tf.nn.top_k(inputs2, k=k, sorted=True).values
-                # transform back to (None, 10, 512)
-                return tf.transpose(new_vals, [0,2,1])
+        relu = ReLU()(batch_norm1)
 
-            pool_layer = Lambda(top_k, arguments={'k': 2})(concat_relu)
-            pool_layer = AveragePooling1D(pool_size=2)(pool_layer)
-        elif self.pool_type == 'custom_sum':
-            ## apply relu function before custom_sum functions
-            def summed_up(inputs):
-                #nonzero_vals = tf.keras.backend.relu(inputs)
-                new_vals = tf.math.reduce_sum(inputs, axis = 1, keepdims = True)
-                return new_vals
-            pool_layer = Lambda(summed_up)(concat_relu)
+        max1 = MaxPooling1D(pool_size=3)(relu)
 
-        else:
-            raise NameError('Set the pooling layer name correctly')
+        conv2 = Conv1D(filters=200, kernel_size=11)(max1)
 
-        #layer = Conv1D(filters=128, kernel_size=12)(pool_layer)
-        #layer = Dense(16)(pool_layer)
-        #pool_size_input = layer.shape[1]
-        #layer = MaxPooling1D(pool_size=pool_size_input)(layer)
+        batch_norm2 = BatchNormalization(conv2)
 
-        # flatten the layer (None, 512)
-        flat = Flatten()(pool_layer)
+        relu2 = ReLU()(batch_norm2)
 
-        if self.regularizer == 'L_1':
-            outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation= self.activation_type)(flat)
-        elif self.regularizer == 'L_2':
-            outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l2(0.001), activation= self.activation_type)(flat)
-        else:
-            raise NameError('Set the regularizer name correctly')
+        max2 = MaxPooling1D(pool_size=4)(relu2)
 
-        model = keras.Model(inputs=[forward, reverse], outputs=outputs)
+        conv3 = Conv1D(filters=200, kernel_size=7)(max2)
+
+        batch_norm3 = BatchNormalization(conv3)
+
+        relu3 = ReLU()(batch_norm3)
+
+        max3 = MaxPooling1D(pool_size=4)(relu3)
+
+        #flat = Flatten()(max3)
+
+        linear1 = Dense(1000)(max3)
+
+        relu4 = ReLU()(linear1)
+
+        dropout1 = Dropout(rate=0.3)
+
+        linear2 = Dense(1000)(dropout1)
+
+        relu5 = ReLU()(linear2)
+
+        dropout2 = Dropout(rate=0.3)
+
+        linear3 = Dense(164)(dropout2)
+
+        sigmoid_out = tf.keras.activations.sigmoid(linear3)
+
+        model = keras.Model(inputs=forward, outputs=sigmoid_out)
 
         model.summary()
 
@@ -294,6 +283,7 @@ class nn_model:
         print('metrics names are ' + str(model.metrics_names))
 
     def cross_val(self):
+
         # Preprocess the data
         prep = preprocess(self.fasta_file, self.readout_file)
         dict = prep.one_hot_encode()
@@ -328,6 +318,7 @@ class nn_model:
         for train, test in kFold.split(ln, ln):
             model = None
             model = self.create_model()
+            sys.exit()
 
             fwd_train = forward_shuffle[train]
             fwd_test = forward_shuffle[test]
