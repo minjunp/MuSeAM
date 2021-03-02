@@ -210,22 +210,23 @@ class nn_model:
         linear3 = Dense(164)(dropout2)
 
         #sigmoid_out = tf.keras.activations.sigmoid(linear3)
-        sigmoid_out = Dense(1, activation='sigmoid')(linear3)
+        #sigmoid_out = Dense(1, activation='sigmoid')(linear3)
+        outputs = Dense(1)(linear3)
 
-        model = keras.Model(inputs=[forward, reverse], outputs=sigmoid_out)
+        model = keras.Model(inputs=[forward, reverse], outputs=outputs)
 
         model.summary()
 
         if self.loss_func == 'mse':
-            model.compile(loss='mean_squared_error', optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
+            model.compile(loss='mean_squared_error', optimizer=self.optimizer, metrics = coeff_determination)
         elif self.loss_func == 'huber':
             loss_huber = keras.losses.Huber(delta=1)
-            model.compile(loss=loss_huber, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
+            model.compile(loss=loss_huber, optimizer=self.optimizer, metrics = coeff_determination)
         elif self.loss_func == 'mae':
             loss_mae = keras.losses.MeanAbsoluteError()
-            model.compile(loss=loss_mae, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
+            model.compile(loss=loss_mae, optimizer=self.optimizer, metrics = coeff_determination)
         elif self.loss_func == 'rank_mse':
-            model.compile(loss=rank_mse, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
+            model.compile(loss=rank_mse, optimizer=self.optimizer, metrics = coeff_determination)
         else:
             raise NameError('Unrecognized Loss Function')
 
@@ -267,20 +268,24 @@ class nn_model:
         y2_train = np.asarray(y2_train)
         y2_test = np.asarray(y2_test)
 
-
         # Without early stopping
-        #history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
+        history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
 
         # Early stopping
         #callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
-        callback = EarlyStopping(monitor='val_spearman_fn', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
-        history = model.fit({'forward': x1_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1, callbacks = [callback])
+        #callback = EarlyStopping(monitor='val_spearman_fn', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
+        #history = model.fit({'forward': x1_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1, callbacks = [callback])
 
-        history2 = model.evaluate({'forward': x1_test}, y1_test)
-        pred = model.predict({'forward': x1_test})
+        history2 = model.evaluate({'forward': x1_test, 'reverse': x2_test}, y1_test)
+        pred = model.predict({'forward': x1_test, 'reverse': x2_test})
 
+        pred = np.reshape(pred, len(pred))
+        pred = pred.tolist()
+        y2_test = y2_test.tolist()
+        spearman = spearmanr(y2_test, pred)
         #viz_prediction(pred, y1_test, '{} regression model'.format(self.loss_func), '{}2.png'.format(self.loss_func))
 
+        print('spearman is ', spearman)
         print("Seed number is {}".format(seed))
         print('metric values of model.evaluate: '+ str(history2))
         print('metrics names are ' + str(model.metrics_names))
@@ -311,6 +316,7 @@ class nn_model:
 
         # initialize metrics to save values
         metrics = []
+        spearmans = []
 
         # Provides train/test indices to split data in train/test sets.
         kFold = StratifiedKFold(n_splits=10)
@@ -339,30 +345,36 @@ class nn_model:
             history2 = model.evaluate({'forward': fwd_test, 'reverse': rc_test}, y_test)
             pred = model.predict({'forward': fwd_test, 'reverse': rc_test})
 
+            pred = np.reshape(pred, len(pred))
+            pred = pred.tolist()
+            y_test = y_test.tolist()
+            spearman = spearmanr(y_test, pred)[0]
+            #viz_prediction(pred, y1_test, '{} regression model'.format(self.loss_func), '{}2.png'.format(self.loss_func))
+
+            print('spearman is ', spearman)
             metrics.append(history2)
+            spearmans.append(spearman)
             pred = np.reshape(pred,len(pred))
-            true_vals.append(y_test.tolist())
-            pred_vals.append(pred.tolist())
+            true_vals.append(y_test)
+            pred_vals.append(pred)
 
         g1 = []
         g2 = []
-        g3 = []
         for i in metrics:
-            loss, r_2, spearman_val = i
+            loss, r_2 = i
             g1.append(loss)
             g2.append(r_2)
-            g3.append(spearman_val)
 
         #np.savetxt('true_vals.txt', true_vals)
         #np.savetxt('pred_vals.txt', pred_vals)
         #viz_prediction(pred_vals, true_vals, '{} delta=1 regression model (seed=460)'.format(self.loss_func), '{}_d1.png'.format(self.loss_func))
 
         print(g2)
-        print(g3)
+        print(spearmans)
         print('seed number = %d' %seed)
         print('Mean loss of 10-fold cv is ' + str(np.mean(g1)))
         print('Mean R_2 score of 10-fold cv is ' + str(np.mean(g2)))
-        print('Mean Spearman of 10-fold cv is ' + str(np.mean(g3)))
+        print('Mean Spearman of 10-fold cv is ' + str(np.mean(spearmans)))
 
     def cross_val_binning(self):
         # Preprocess the data
