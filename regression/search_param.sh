@@ -1,9 +1,9 @@
 #!/bin/bash
 
 work_dir="/project/samee/minjun/MuSeAM/regression"
-output_base_dir="${work_dir}/ou/performance"
-par_output_dir="${work_dir}/outs/pars"
-true_pred_dir="${work_dir}/outs/true_pred"
+output_base_dir="${work_dir}/outs_reduced/performance"
+par_output_dir="${work_dir}/outs_reduced/pars"
+true_pred_dir="${work_dir}/outs_reduced/true_pred"
 fasta_file="${work_dir}/sequences.fa"
 readout_file="${work_dir}/wt_readout.dat"
 train_file="${work_dir}/train.py"
@@ -22,7 +22,7 @@ mkdir -p ${true_pred_dir}
 #code="/project/samee/minjun/mpra/code/dummy.py"
 
 index=0
-for filters in 512
+for filters in 512 1024 2000
 do
   for kernel_size in 12
   do
@@ -32,11 +32,11 @@ do
       do
         for activation_type in linear
         do
-          for epochs in 30 40 50 60
+          for epochs in 50 100
           do
             for batch_size in 60
             do
-              for loss_func in mse rank_mse
+              for loss_func in mse
               do
                 for optimizer in adam
                 do
