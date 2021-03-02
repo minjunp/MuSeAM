@@ -166,10 +166,12 @@ class nn_model:
 
         #first_layer = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, strides=1, data_format='channels_last', use_bias = True)
 
-        conv1 = first_layer(forward)
-        #bw = first_layer(reverse)
+        conv1_fwd = first_layer(forward)
+        conv1_rc = first_layer(reverse)
 
-        batch_norm1 = BatchNormalization()(conv1)
+        concat = concatenate([conv1_fwd, conv1_rc], axis=1)
+
+        batch_norm1 = BatchNormalization()(concat)
 
         relu = ReLU()(batch_norm1)
 
@@ -207,9 +209,10 @@ class nn_model:
 
         linear3 = Dense(164)(dropout2)
 
-        sigmoid_out = tf.keras.activations.sigmoid(linear3)
+        #sigmoid_out = tf.keras.activations.sigmoid(linear3)
+        sigmoid_out = Dense(1, activation='sigmoid')(linear3)
 
-        model = keras.Model(inputs=forward, outputs=sigmoid_out)
+        model = keras.Model(inputs=[forward, reverse], outputs=sigmoid_out)
 
         model.summary()
 
