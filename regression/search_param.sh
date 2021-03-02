@@ -1,7 +1,7 @@
 #!/bin/bash
 
 work_dir="/project/samee/minjun/MuSeAM/regression"
-output_base_dir="${work_dir}/outs/performance"
+output_base_dir="${work_dir}/ou/performance"
 par_output_dir="${work_dir}/outs/pars"
 true_pred_dir="${work_dir}/outs/true_pred"
 fasta_file="${work_dir}/sequences.fa"
