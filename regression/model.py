@@ -168,6 +168,7 @@ class nn_model:
         bw = first_layer(reverse)
 
         concat = concatenate([fw, bw], axis=1)
+        #concat = Add()([fw, bw])
         pool_size_input = concat.shape[1]
 
         concat_relu = ReLU()(concat)
