@@ -38,6 +38,13 @@ from numpy import newaxis
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+#Reproducibility
+#seed = random.randint(1,1000)
+seed = 460
+
+np.random.seed(seed)
+tf.random.set_seed(seed)
+
 class ConvolutionLayer(Conv1D):
     def __init__(self, filters,
                  kernel_size,
@@ -264,9 +271,6 @@ class nn_model:
             readout = np.log2(readout)
             readout = np.ndarray.tolist(readout)
 
-        seed = random.randint(1,1000)
-        #seed = 460
-
         # 90% Train, 10% Test
         x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.1, random_state=seed)
         x2_train, x2_test, y2_train, y2_test = train_test_split(rc_fasta, readout, test_size=0.1, random_state=seed)
@@ -311,10 +315,6 @@ class nn_model:
         if self.activation_type == 'linear':
             readout = np.log2(readout)
             readout = np.ndarray.tolist(readout)
-
-        # seed to reproduce results
-        seed = random.randint(1,1000)
-        seed = 460
 
         forward_shuffle, readout_shuffle = shuffle(fw_fasta, readout, random_state=seed)
         reverse_shuffle, readout_shuffle = shuffle(rc_fasta, readout, random_state=seed)
