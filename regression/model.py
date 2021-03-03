@@ -234,6 +234,9 @@ class nn_model:
             model.compile(loss=loss_mae, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         elif self.loss_func == 'rank_mse':
             model.compile(loss=rank_mse, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
+        elif self.loss_func == 'poisson':
+            loss_poisson = tf.keras.losses.Poisson()
+            model.compile(loss=loss_poisson, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         else:
             raise NameError('Unrecognized Loss Function')
 
