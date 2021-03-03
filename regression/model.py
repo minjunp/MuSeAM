@@ -11,7 +11,7 @@ import keras
 from keras.utils.vis_utils import model_to_dot
 
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, AveragePooling1D, BatchNormalization, Activation, concatenate, ReLU
+from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, AveragePooling1D, BatchNormalization, Activation, concatenate, ReLU, Add
 
 from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
 from keras.utils.vis_utils import plot_model
