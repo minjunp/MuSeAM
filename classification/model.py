@@ -247,7 +247,6 @@ class nn_model:
 
         model = self.create_model()
 
-
         # change from list to numpy array
         y1_train = np.asarray(y1_train)
         y1_test = np.asarray(y1_test)
