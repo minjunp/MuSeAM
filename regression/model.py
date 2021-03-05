@@ -109,8 +109,8 @@ class nn_model:
         self.loss_func = loss_func
         self.optimizer = optimizer
 
-        self.eval()
-        #self.cross_val()
+        #self.eval()
+        self.cross_val()
         #self.cross_val_binning()
 
     def create_model(self):

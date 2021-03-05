@@ -1,9 +1,9 @@
 #!/bin/bash
 
 work_dir="/project/samee/minjun/MuSeAM/regression"
-output_base_dir="${work_dir}/outs_reduced/performance"
-par_output_dir="${work_dir}/outs_reduced/pars"
-true_pred_dir="${work_dir}/outs_reduced/true_pred"
+output_base_dir="${work_dir}/outs_reproduce/performance"
+par_output_dir="${work_dir}/outs_reproduce/pars"
+true_pred_dir="${work_dir}/outs_reproduce/true_pred"
 fasta_file="${work_dir}/sequences.fa"
 readout_file="${work_dir}/wt_readout.dat"
 train_file="${work_dir}/train.py"
@@ -32,9 +32,9 @@ do
       do
         for activation_type in linear
         do
-          for epochs in 50 100
+          for epochs in 15 20 25 30 35 40
           do
-            for batch_size in 60
+            for batch_size in 55 56 57 58 59 60 61 62 63 64 65 66 67
             do
               for loss_func in mse
               do

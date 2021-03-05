@@ -266,10 +266,7 @@ class nn_model:
 
         # Restore the weights
         #weight_dir = './data/E13RACtrlF1_E13RAMutF1_DMR_toppos2000/checkpoint/my_checkpoint'
-        weight_dir = './data/E13RACtrlF1_E13RAMutF1_DMR_topneg2000/checkpoint/my_checkpoint'
-
-        train_afters = []
-        test_afters = []
+        weight_dir = '/Users/minjunpark/Documents/MuSeAM/classification/saved_weights/my_checkpoint'
 
         model.load_weights(weight_dir)
 
