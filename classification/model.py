@@ -43,7 +43,6 @@ from sklearn.utils import shuffle
 
 #Reproducibility
 seed = random.randint(1,1000)
-#seed = 460
 
 np.random.seed(seed)
 tf.random.set_seed(seed)

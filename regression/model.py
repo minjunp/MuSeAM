@@ -39,8 +39,8 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 #Reproducibility
-seed = random.randint(1,1000)
-#seed = 460
+#seed = random.randint(1,1000)
+seed = 184
 
 np.random.seed(seed)
 tf.random.set_seed(seed)
