@@ -26,7 +26,7 @@ from keras.models import Model
 
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, AveragePooling1D, BatchNormalization, Activation, concatenate, ReLU
+from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, AveragePooling1D, BatchNormalization, Activation, concatenate, ReLU, Add
 from tensorflow.keras import backend as K, regularizers
 from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
 from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
@@ -153,6 +153,7 @@ class nn_model:
         bw = first_layer(reverse)
 
         concat = concatenate([fw, bw], axis=1)
+
         pool_size_input = concat.shape[1]
 
         #concat = ReLU()(concat)

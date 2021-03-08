@@ -11,7 +11,7 @@ import keras
 from keras.utils.vis_utils import model_to_dot
 
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, AveragePooling1D, BatchNormalization, Activation, concatenate, ReLU, Add
+from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, AveragePooling1D, BatchNormalization, Activation, concatenate, ReLU, Add, Dropout
 
 from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
 from keras.utils.vis_utils import plot_model
@@ -170,12 +170,14 @@ class nn_model:
 
         #first_layer = Conv1D(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', input_shape=(dim_num[1],dim_num[2]), use_bias = True)
         first_layer = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, strides=1, data_format='channels_last', use_bias = True)
+        #fw = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, strides=1, data_format='channels_last', use_bias = True)(forward)
+        #rc = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, strides=1, data_format='channels_last', use_bias = True)(reverse)
 
         fw = first_layer(forward)
-        bw = first_layer(reverse)
+        rc = first_layer(reverse)
 
-        concat = concatenate([fw, bw], axis=1)
-        #concat = Add()([fw, bw])
+        concat = concatenate([fw, rc], axis=1)
+        #concat = Add()([fw, rc])
         pool_size_input = concat.shape[1]
 
         concat_relu = ReLU()(concat)
@@ -221,6 +223,8 @@ class nn_model:
         # flatten the layer (None, 512)
         flat = Flatten()(pool_layer)
 
+        #flat = Dropout(rate=0.1)(flat)
+
         if self.regularizer == 'L_1':
             outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation= self.activation_type)(flat)
         elif self.regularizer == 'L_2':
@@ -231,6 +235,7 @@ class nn_model:
         model = keras.Model(inputs=[forward, reverse], outputs=outputs)
 
         model.summary()
+        keras.utils.plot_model(model, "my_model.png")
 
         if self.loss_func == 'mse':
             model.compile(loss='mean_squared_error', optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
