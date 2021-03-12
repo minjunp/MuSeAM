@@ -15,6 +15,7 @@ def train(file_name):
     dict["kernel_size"] = int(dict["kernel_size"])
     dict["epochs"] = int(dict["epochs"])
     dict["batch_size"] = int(dict["batch_size"])
+    
 
     return dict
 
@@ -35,7 +36,7 @@ def main(argv = None):
     dict = train(parameter_file)
 
     nn_model(fasta_file, readout_file, filters=dict["filters"], kernel_size=dict["kernel_size"], pool_type=dict["pool_type"], regularizer=dict["regularizer"],
-            activation_type=dict["activation_type"], epochs=dict["epochs"], batch_size=dict["batch_size"], loss_func=dict["loss_func"], optimizer=dict["optimizer"])
+            activation_type=dict["activation_type"], epochs=dict["epochs"], batch_size=dict["batch_size"], loss_func=dict["loss_func"], optimizer=dict["optimizer"],scaling=dict["scaling"],model_name=dict['model_name'])
 
     # reports time consumed during execution (secs)
     print("--- %s seconds ---" % (time.time() - start_time))

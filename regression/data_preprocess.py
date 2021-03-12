@@ -29,6 +29,21 @@ class preprocess:
                     all_seqs.append(line)
         return all_seqs
 
+    def read_fasta_name_into_array(self):
+        all_seqs = []
+        with open(self.fasta_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                line = line.upper()
+                if line[0] == '>':
+                    all_seqs.append(line)
+                    #continue
+                else:
+                    #all_seqs.append(line)
+                    pass
+                
+        return np.array(all_seqs)
+
     def read_fasta_forward(self):
         # get sequences and remove other information
         sequences = []

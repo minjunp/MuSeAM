@@ -9,10 +9,8 @@ import pandas
 import keras
 
 from keras.utils.vis_utils import model_to_dot
-
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, AveragePooling1D, BatchNormalization, Activation, concatenate, ReLU, Add, Dropout
-
+from tensorflow.keras.layers import Conv1D, MaxPooling1D, Flatten, Dense, AveragePooling1D, BatchNormalization, Activation, concatenate, ReLU
 from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
 from keras.utils.vis_utils import plot_model
 from sklearn.preprocessing import StandardScaler
@@ -25,7 +23,6 @@ import tensorflow as tf
 from scipy.stats import spearmanr, pearsonr
 
 import matplotlib.pyplot as plt
-
 from data_preprocess import preprocess
 from sklearn.utils import shuffle
 import random
@@ -34,16 +31,45 @@ from tensorflow.keras.layers import Lambda
 from tensorflow import keras
 from keras.models import Model
 from numpy import newaxis
+from sklearn.preprocessing import MinMaxScaler
+
+
+#Reproducibility
+seed = 460
+np.random.seed(seed)
+tf.random.set_seed(seed)
+
 
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-#Reproducibility
-#seed = random.randint(1,1000)
-seed = 184
+#Create new loss function (Rank mse)
+@tf.function()
+def rank_mse(yTrue, yPred):
+  lambda_value=0.15
+  #pass lambda value as tensor
+  lambda_value = tf.convert_to_tensor(lambda_value,dtype="float32")
 
-np.random.seed(seed)
-tf.random.set_seed(seed)
+  #get vector ranks
+  rank_yTrue = tf.argsort(tf.argsort(yTrue))
+  rank_yPred = tf.argsort(tf.argsort(yPred))
+
+  #calculate losses
+  mse = tf.reduce_mean(tf.square(tf.subtract(yTrue,yPred)))
+  rank_mse = tf.reduce_mean(tf.square(tf.subtract(rank_yTrue,rank_yPred)))
+
+  #take everything to same dtype
+  mse = tf.cast(mse,dtype="float32")
+  rank_mse = tf.cast(rank_mse,dtype="float32")
+
+  #(1 - lambda value)* mse(part a of loss)
+  loss_a = tf.multiply(tf.subtract(tf.ones(1,dtype="float32"),lambda_value),mse)
+  #lambda value * rank_mse (part b of loss)
+  loss_b = tf.multiply(lambda_value,rank_mse)
+  #final loss
+  loss = tf.add(loss_a,loss_b)
+
+  return loss
 
 class ConvolutionLayer(Conv1D):
     def __init__(self, filters,
@@ -95,7 +121,7 @@ class ConvolutionLayer(Conv1D):
         return outputs
 
 class nn_model:
-    def __init__(self, fasta_file, readout_file, filters, kernel_size, pool_type, regularizer, activation_type, epochs, batch_size, loss_func, optimizer):
+    def __init__(self, fasta_file, readout_file, filters, kernel_size, pool_type, regularizer, activation_type, epochs, batch_size, loss_func, optimizer,scaling,model_name):
         """initialize basic parameters"""
         self.filters = filters
         self.kernel_size = kernel_size
@@ -108,6 +134,8 @@ class nn_model:
         self.readout_file = readout_file
         self.loss_func = loss_func
         self.optimizer = optimizer
+        self.scaling = scaling
+        self.model_name = model_name
 
         #self.eval()
         self.cross_val()
@@ -122,33 +150,6 @@ class nn_model:
         def spearman_fn(y_true, y_pred):
             return tf.py_function(spearmanr, [tf.cast(y_pred, tf.float32),
                    tf.cast(y_true, tf.float32)], Tout=tf.float32)
-        #Create new loss function (Rank mse)
-        @tf.function()
-        def rank_mse(yTrue, yPred):
-          lambda_value=0.25
-          #pass lambda value as tensor
-          lambda_value = tf.convert_to_tensor(lambda_value,dtype="float32")
-
-          #get vector ranks
-          rank_yTrue = tf.argsort(tf.argsort(yTrue))
-          rank_yPred = tf.argsort(tf.argsort(yPred))
-
-          #calculate losses
-          mse = tf.reduce_mean(tf.square(tf.subtract(yTrue,yPred)))
-          rank_mse = tf.reduce_mean(tf.square(tf.subtract(rank_yTrue,rank_yPred)))
-
-          #take everything to same dtype
-          mse = tf.cast(mse,dtype="float32")
-          rank_mse = tf.cast(rank_mse,dtype="float32")
-
-          #(1 - lambda value)* mse(part a of loss)
-          loss_a = tf.multiply(tf.subtract(tf.ones(1,dtype="float32"),lambda_value),mse)
-          #lambda value * rank_mse (part b of loss)
-          loss_b = tf.multiply(lambda_value,rank_mse)
-          #final loss
-          loss = tf.add(loss_a,loss_b)
-
-          return loss
 
         # building model
         prep = preprocess(self.fasta_file, self.readout_file)
@@ -170,14 +171,11 @@ class nn_model:
 
         #first_layer = Conv1D(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', input_shape=(dim_num[1],dim_num[2]), use_bias = True)
         first_layer = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, strides=1, data_format='channels_last', use_bias = True)
-        #fw = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, strides=1, data_format='channels_last', use_bias = True)(forward)
-        #rc = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, strides=1, data_format='channels_last', use_bias = True)(reverse)
 
         fw = first_layer(forward)
-        rc = first_layer(reverse)
+        bw = first_layer(reverse)
 
-        concat = concatenate([fw, rc], axis=1)
-        #concat = Add()([fw, rc])
+        concat = concatenate([fw, bw], axis=1)
         pool_size_input = concat.shape[1]
 
         concat_relu = ReLU()(concat)
@@ -223,19 +221,20 @@ class nn_model:
         # flatten the layer (None, 512)
         flat = Flatten()(pool_layer)
 
-        #flat = Dropout(rate=0.1)(flat)
+        if self.activation_type == 'linear':
+            if self.regularizer == 'L_1':
+                outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation= self.activation_type)(flat)
+            elif self.regularizer == 'L_2':
+                outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l2(0.001), activation= self.activation_type)(flat)
+            else:
+                raise NameError('Set the regularizer name correctly')
+        elif self.activation_type =='sigmoid':
+            outputs = Dense(1, activation= self.activation_type)(flat)
 
-        if self.regularizer == 'L_1':
-            outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation= self.activation_type)(flat)
-        elif self.regularizer == 'L_2':
-            outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l2(0.001), activation= self.activation_type)(flat)
-        else:
-            raise NameError('Set the regularizer name correctly')
 
         model = keras.Model(inputs=[forward, reverse], outputs=outputs)
 
         model.summary()
-        keras.utils.plot_model(model, "my_model.png")
 
         if self.loss_func == 'mse':
             model.compile(loss='mean_squared_error', optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
@@ -248,8 +247,8 @@ class nn_model:
         elif self.loss_func == 'rank_mse':
             model.compile(loss=rank_mse, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         elif self.loss_func == 'poisson':
-            loss_poisson = tf.keras.losses.Poisson()
-            model.compile(loss=loss_poisson, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
+            poisson_loss = keras.losses.Poisson()
+            model.compile(loss=poisson_loss, optimizer=self.optimizer, metrics = [coeff_determination, spearman_fn])
         else:
             raise NameError('Unrecognized Loss Function')
 
@@ -273,8 +272,17 @@ class nn_model:
         readout = dict["readout"]
 
         if self.activation_type == 'linear':
+
             readout = np.log2(readout)
-            readout = np.ndarray.tolist(readout)
+
+            if self.scaling == None:
+                readout = np.ndarray.tolist(readout)
+            elif self.scaling == "0_1":
+                scaler = MinMaxScaler(feature_range=(0,1))
+                scaler.fit(readout.reshape(-1, 1))
+                readout = scaler.transform(readout.reshape(-1, 1))
+                readout = readout.flatten()
+                readout = np.ndarray.tolist(readout)
 
         # 90% Train, 10% Test
         x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.1, random_state=seed)
@@ -290,12 +298,12 @@ class nn_model:
 
 
         # Without early stopping
-        history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
+        #history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
 
         # Early stopping
         #callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
-        #callback = EarlyStopping(monitor='val_spearman_fn', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
-        #history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1, callbacks = [callback])
+        callback = EarlyStopping(monitor='val_spearman_fn', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
+        history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1, callbacks = [callback])
 
         history2 = model.evaluate({'forward': x1_test, 'reverse': x2_test}, y1_test)
         pred = model.predict({'forward': x1_test, 'reverse': x2_test})
@@ -310,29 +318,49 @@ class nn_model:
         # Preprocess the data
         prep = preprocess(self.fasta_file, self.readout_file)
         dict = prep.one_hot_encode()
+        
         # If want dinucleotide sequences
         #dict = prep.dinucleotide_encode()
 
         fw_fasta = dict["forward"]
         rc_fasta = dict["reverse"]
         readout = dict["readout"]
+        names = prep.read_fasta_name_into_array()
 
         if self.activation_type == 'linear':
             readout = np.log2(readout)
-            readout = np.ndarray.tolist(readout)
 
-        forward_shuffle, readout_shuffle = shuffle(fw_fasta, readout, random_state=seed)
-        reverse_shuffle, readout_shuffle = shuffle(rc_fasta, readout, random_state=seed)
+            if self.scaling == 'no_scaling':
+                readout = np.ndarray.tolist(readout)
+            elif self.scaling == "0_1":
+                scaler = MinMaxScaler(feature_range=(0,1))
+                scaler.fit(readout.reshape(-1, 1))
+                readout = scaler.transform(readout.reshape(-1, 1))
+                readout = readout.flatten()
+                readout = np.ndarray.tolist(readout)
+            elif self.scaling == "-1_1":
+                scaler = MinMaxScaler(feature_range=(-1,1))
+                scaler.fit(readout.reshape(-1, 1))
+                readout = scaler.transform(readout.reshape(-1, 1))
+                readout = readout.flatten()
+                readout = np.ndarray.tolist(readout)
+
+
+
+        forward_shuffle, readout_shuffle, names_shuffle = shuffle(fw_fasta, readout, names, random_state=seed)
+        reverse_shuffle, readout_shuffle, names_shuffle = shuffle(rc_fasta, readout, names, random_state=seed)
         readout_shuffle = np.array(readout_shuffle)
 
-        # initialize metrics to save values
+        # initialize metrics to save values 
         metrics = []
 
         # Provides train/test indices to split data in train/test sets.
         kFold = StratifiedKFold(n_splits=10)
         ln = np.zeros(len(readout_shuffle))
-        true_vals = []
-        pred_vals = []
+        
+        pred_vals = pandas.DataFrame()
+
+        Fold=0
 
         for train, test in kFold.split(ln, ln):
             model = None
@@ -344,6 +372,8 @@ class nn_model:
             rc_test = reverse_shuffle[test]
             y_train = readout_shuffle[train]
             y_test = readout_shuffle[test]
+            names_train = names_shuffle[test]
+            names_test = names_shuffle[test]
 
             # Early stopping
             #callback = EarlyStopping(monitor='loss', min_delta=0.0001, patience=3, verbose=0, mode='max', baseline=None, restore_best_weights=False)
@@ -356,9 +386,19 @@ class nn_model:
 
             metrics.append(history2)
             pred = np.reshape(pred,len(pred))
-            true_vals.append(y_test.tolist())
-            pred_vals.append(pred.tolist())
 
+            temp = pandas.DataFrame({'sequence_names':np.array(names_test).flatten(),
+                                         'true_vals':np.array(y_test).flatten(),
+                                         'pred_vals':np.array(pred).flatten()})
+            temp['Fold'] = Fold
+
+            Fold=Fold+1
+
+            pred_vals = pred_vals.append(temp,ignore_index=True)
+
+        pred_vals.to_csv(f'./outs/{self.model_name}.csv')
+
+        print('[INFO] Calculating 10Fold CV metrics')   
         g1 = []
         g2 = []
         g3 = []
@@ -368,16 +408,19 @@ class nn_model:
             g2.append(r_2)
             g3.append(spearman_val)
 
-        #np.savetxt('true_vals.txt', true_vals)
-        #np.savetxt('pred_vals.txt', pred_vals)
-        #viz_prediction(pred_vals, true_vals, '{} delta=1 regression model (seed=460)'.format(self.loss_func), '{}_d1.png'.format(self.loss_func))
-
         print(g2)
         print(g3)
         print('seed number = %d' %seed)
         print('Mean loss of 10-fold cv is ' + str(np.mean(g1)))
         print('Mean R_2 score of 10-fold cv is ' + str(np.mean(g2)))
         print('Mean Spearman of 10-fold cv is ' + str(np.mean(g3)))
+
+        metrics_dataframe = pandas.DataFrame({"mean_loss":[np.mean(g1)],
+                                          "R_2":[np.mean(g2)],
+                                          "Spearman":[np.mean(g3)]})
+
+
+        metrics_dataframe.to_csv(f'./outs/{self.model_name}_CV_metrics.csv')
 
     def cross_val_binning(self):
         # Preprocess the data
@@ -395,8 +438,8 @@ class nn_model:
 
         # Returns the indices that would sort an array.
         x = np.argsort(readout)
-        """
         ind = []
+
         num = 10
         for i in range(num):
             for j in range(int(len(x)/num)):
@@ -406,10 +449,7 @@ class nn_model:
         forward_bin = fw_fasta[ind]
         reverse_bin = rc_fasta[ind]
         readout_bin = readout[ind]
-        """
-        forward_bin = fw_fasta[x]
-        reverse_bin = rc_fasta[x]
-        readout_bin = readout[x]
+        #readout_bin = np.array(readout_bin)
 
         # initialize metrics to save values
         metrics = []
@@ -456,10 +496,11 @@ class nn_model:
 
         #np.savetxt('true_vals.txt', true_vals)
         #np.savetxt('pred_vals.txt', pred_vals)
-        viz_prediction(pred_vals, true_vals, '{} regression model'.format(self.loss_func), '{}_binning_ascending.png'.format(self.loss_func))
+        #viz_prediction(pred_vals, true_vals, '{} delta=1 regression model (seed=460)'.format(self.loss_func), '{}_d1.png'.format(self.loss_func))
 
         print(g2)
         print(g3)
+        print('seed number = %d' %seed)
         print('Mean loss of 10-fold cv is ' + str(np.mean(g1)))
         print('Mean R_2 score of 10-fold cv is ' + str(np.mean(g2)))
         print('Mean Spearman of 10-fold cv is ' + str(np.mean(g3)))
