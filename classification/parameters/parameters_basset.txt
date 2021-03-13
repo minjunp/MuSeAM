@@ -3,4 +3,4 @@ batch_size 59
 loss_func binary_crossentropy
 optimizer adam
 validation_split 0.0
-model_name deepsea_classification
+model_name basset_classification
