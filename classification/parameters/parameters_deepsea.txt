@@ -1,4 +1,4 @@
-epochs 1
+epochs 35
 batch_size 59
 loss_func binary_crossentropy
 optimizer adam

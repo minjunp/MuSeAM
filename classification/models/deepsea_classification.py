@@ -12,6 +12,7 @@ import os
 import json
 import csv
 import pandas
+import sklearn
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score, KFold
 from tensorflow.keras import backend as K
 import tensorflow as tf
@@ -165,18 +166,12 @@ def cros_eval(parameters,fasta_file_positive,fasta_file_negative):
         names_test = names_shuffle[test]
 
         history = model.fit(fwd_train, y_train, epochs=parameters['epochs'], batch_size=parameters['batch_size'], validation_split=parameters['validation_split'])
-        
         loss, accuracy = model.evaluate(fwd_test, y_test)
-
-        history2 = model.evaluate(fwd_test, y_test)
-
         pred = model.predict(fwd_test)
-
-        metrics.append(history2)
-
         pred = np.reshape(pred,len(pred))
+        auc = sklearn.metrics.roc_auc_score(np.where(y_test>0.5, 1.0, 0.0), np.where(pred>0.5, 1.0, 0.0))
 
-        #temp fold dataframes
+        # Temporary fold dataframes
         temp = pandas.DataFrame({'sequence_names':np.array(names_test).flatten(),
                                      'true_vals':np.array(y_test).flatten(),
                                      'pred_vals':np.array(pred).flatten()})                        
@@ -184,7 +179,8 @@ def cros_eval(parameters,fasta_file_positive,fasta_file_negative):
 
         temp2 = pandas.DataFrame({"Fold":[Fold],
                                   "Loss":[loss],
-                                  "Accuracy":[accuracy]
+                                  "Accuracy":[accuracy],
+                                  "AUC":[auc], 
         })
 
         Fold=Fold+1
@@ -194,13 +190,14 @@ def cros_eval(parameters,fasta_file_positive,fasta_file_negative):
         cv_results = cv_results.append(temp2, ignore_index=True)
 
     
-    pred_vals.to_csv(f'./outs/metrics/{model_name}.csv')
+    pred_vals.to_csv(f'../outs/metrics/{model_name}.csv')
 
 
     #calculate mean accuracy across all folds
     mean_acc = cv_results['Accuracy'].mean()
-    cv_results = cv_results.append({'Fold':'All folds','Loss':'None','Accuracy':mean_acc}, ignore_index=True)
-    cv_results.to_csv(f'./outs/metrics/{model_name}_cv_results.csv')
+    mean_auc = cv_results['AUC'].mean()
+    cv_results = cv_results.append({'Fold':'All folds','Loss':'None','Accuracy':mean_acc,'AUC':mean_auc}, ignore_index=True)
+    cv_results.to_csv(f'../outs/metrics/{model_name}_cv_results.csv')
 
 
 
