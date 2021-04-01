@@ -46,30 +46,70 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 #Create new loss function (Rank mse)
 @tf.function()
 def rank_mse(yTrue, yPred):
-  lambda_value=0.15
-  #pass lambda value as tensor
-  lambda_value = tf.convert_to_tensor(lambda_value,dtype="float32")
 
-  #get vector ranks
-  rank_yTrue = tf.argsort(tf.argsort(yTrue))
-  rank_yPred = tf.argsort(tf.argsort(yPred))
+  def calculate_loss(yTrue, yPred):
+    
+    print(f'[INFO] Print yTrue: {yTrue}')
+    print(f'[INFO] Print yPred: {yPred}')
+    #do
+    lambda_value=0.5
+    size = yTrue.get_shape()[1]
+    #pass lambda value as tensor
+    lambda_value = tf.convert_to_tensor(lambda_value,dtype="float32")
+    #get vector ranks
+    rank_yTrue = tf.argsort(tf.argsort(yTrue))
+    rank_yPred = tf.argsort(tf.argsort(yPred))
+    print(f'[INFO] Print ranked yTrue: {rank_yTrue}')
+    print(f'[INFO] Print ranked yPred: {rank_yPred}')
+    #calculate losses
 
-  #calculate losses
-  mse = tf.reduce_mean(tf.square(tf.subtract(yTrue,yPred)))
-  rank_mse = tf.reduce_mean(tf.square(tf.subtract(rank_yTrue,rank_yPred)))
+    #calculate mse
+    print(f'\n[INFO] Calculating normal mse')
+    mse = tf.subtract(yTrue,yPred)
+    print(f'[INFO] subtract mse: {mse}')
+    mse = tf.square(mse)
+    print(f'[INFO] square mse: {mse}')
+    mse = tf.math.reduce_sum(mse).numpy()
+    print(f'[INFO] reduce sum mse: {mse}')
+    mse = tf.divide(mse,size)
+    print(f'[INFO] divide by size mse: {mse}')   
+    mse = tf.cast(mse,dtype="float32")
+    print(f'[INFO] final mse: {mse}')
+  
+    #calculate rank_mse
+    print(f'\n[INFO] Calculating rank mse')
+    rank_mse = tf.cast(tf.subtract(rank_yTrue,rank_yPred),dtype="float32")
+    print(f'[INFO] substract rank_mse: {rank_mse}')
+    rank_mse = tf.square(rank_mse)
+    print(f'[INFO] square rank_mse: {rank_mse}')
+    rank_mse = tf.math.reduce_sum(rank_mse).numpy()
+    print(f'[INFO] reduce sum rank_mse: {rank_mse}')
+    rank_mse = tf.math.sqrt(rank_mse)
+    print(f'[INFO] square root rank_mse: {rank_mse}')  
+    rank_mse = tf.divide(rank_mse,size)
+    print(f'[INFO] divide by size rank_mse: {rank_mse}') 
+    print(f'[INFO] final rank_mse: {rank_mse}')
 
-  #take everything to same dtype
-  mse = tf.cast(mse,dtype="float32")
-  rank_mse = tf.cast(rank_mse,dtype="float32")
+    #(1 - lambda value)* mse(part a of loss)
+    loss_a = tf.multiply(tf.subtract(tf.ones(1,dtype="float32"),lambda_value),mse)
+    print(f'\n[INFO] Final loss a: {loss_a}')
+    #lambda value * rank_mse (part b of loss)
+    loss_b = tf.multiply(lambda_value,rank_mse)
+    print(f'[INFO] Final loss b: {loss_b}')
+    #final loss
+    loss = tf.add(loss_a,loss_b)
+    print(f'[INFO] Final loss: {loss}')
+    return loss
 
-  #(1 - lambda value)* mse(part a of loss)
-  loss_a = tf.multiply(tf.subtract(tf.ones(1,dtype="float32"),lambda_value),mse)
-  #lambda value * rank_mse (part b of loss)
-  loss_b = tf.multiply(lambda_value,rank_mse)
-  #final loss
-  loss = tf.add(loss_a,loss_b)
+  debug=True
 
-  return loss
+  if not debug:
+    with HiddenPrints():
+      loss = calculate_loss(yTrue, yPred)
+      return loss
+  else:
+    loss = calculate_loss(yTrue, yPred)
+    return loss
 
 class ConvolutionLayer(Conv1D):
     def __init__(self, filters,
