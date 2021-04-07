@@ -42,7 +42,8 @@ from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val
 from sklearn.utils import shuffle
 
 #Reproducibility
-seed = random.randint(1,1000)
+#seed = random.randint(1,1000)
+seed = 601
 
 np.random.seed(seed)
 tf.random.set_seed(seed)
@@ -110,10 +111,65 @@ class nn_model:
         self.fasta_file = fasta_file
         self.readout_file = readout_file
 
-        self.eval()
+        self.eval_deepsea()
+        #self.eval()
         #self.filter_importance()
         #self.cross_val()
         #self.hyperopt_tuner()
+    def deepsea_model(self):
+
+        # Modified custom metric functions
+        def coeff_determination(y_true, y_pred):
+            SS_res =  K.sum(K.square( y_true-y_pred ))
+            SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
+            return (1 - SS_res/(SS_tot + K.epsilon()))
+        def spearman_fn(y_true, y_pred):
+            return tf.py_function(spearmanr, [tf.cast(y_pred, tf.float32),tf.cast(y_true, tf.float32)], Tout=tf.float32)
+
+        # building model
+        prep = preprocess(self.fasta_file, self.readout_file)
+        # if want mono-nucleotide sequences
+        dict = prep.one_hot_encode()
+        # if want dinucleotide sequences
+        #dict = prep.dinucleotide_encode()
+
+        readout = dict["readout"]
+        fw_fasta = dict["forward"]
+        rc_fasta = dict["reverse"]
+
+        dim_num = fw_fasta.shape
+
+        #deepsea arquitecture
+        model = tf.keras.Sequential()
+        #First Conv1D
+        model.add(tf.keras.layers.Conv1D(filters=320,
+                     kernel_size=8,
+                     input_shape=(dim_num[1],dim_num[2])))
+
+        model.add(tf.keras.layers.MaxPooling1D(pool_size=2,strides=2))
+        model.add(tf.keras.layers.Dropout(rate=0.20))
+        #Second Conv1D
+        model.add(tf.keras.layers.Conv1D(filters=480,
+                     kernel_size=8))
+        model.add(tf.keras.layers.MaxPooling1D(pool_size=2,strides=2))
+        model.add(tf.keras.layers.Dropout(rate=0.20))
+        #Third Conv1D
+        model.add(tf.keras.layers.Conv1D(filters=960,
+                     kernel_size=8))
+        model.add(tf.keras.layers.Dropout(rate=0.50))
+        #Dense Layer
+        model.add(tf.keras.layers.Flatten())
+        model.add(tf.keras.layers.Dense(925, activation='relu'))
+        #Output Layer
+        model.add(tf.keras.layers.Dense(2, activation='sigmoid'))
+
+        model.compile(loss='binary_crossentropy',
+                      optimizer='adam',
+                      metrics=['binary_accuracy'])
+
+        model.summary()
+
+        return model
 
     def create_model(self):
         # different metric functions
@@ -220,6 +276,117 @@ class nn_model:
         #model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy', auroc])
 
         return model
+
+    def eval_deepsea(self):
+        prep = preprocess(self.fasta_file, self.readout_file)
+
+        # if want mono-nucleotide sequences
+        dict = prep.one_hot_encode()
+
+        # if want dinucleotide sequences
+        # dict = prep.dinucleotide_encode()
+
+        # print maximum length without truncation
+        np.set_printoptions(threshold=sys.maxsize)
+
+        fw_fasta = dict["forward"]
+        rc_fasta = dict["reverse"]
+        readout = dict["readout"]
+
+        #seed = random.randint(1,1000)
+
+        # Use first half 50% train, second half 50% test --> that's how I set it up systematically
+        x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.5, shuffle=False)
+        #print(x1_train)
+        # split for reverse complemenet sequences
+        x2_train, x2_test, y2_train, y2_test = train_test_split(rc_fasta, readout, test_size=0.5, shuffle=False)
+        #assert x1_test == x2_test
+        #assert y1_test == y2_test
+
+        model = self.deepsea_model()
+
+        # change from list to numpy array
+        y1_train = np.asarray(y1_train)
+        y1_test = np.asarray(y1_test)
+        y2_train = np.asarray(y2_train)
+        y2_test = np.asarray(y2_test)
+
+        # Copy the original target values for later uses
+        y1_train_orig = y1_train.copy()
+        y1_test_orig = y1_test.copy()
+
+        # if we want to merge two training dataset
+        # comb = np.concatenate((y1_train, y2_train))
+
+        ## Change it to categorical values
+        y1_train = keras.utils.to_categorical(y1_train, 2)
+        y1_test = keras.utils.to_categorical(y1_test, 2)
+
+        # train the data
+        model.fit(x1_train, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
+        ## Save the entire model as a SavedModel.
+        ##model.save('my_model')
+        # Save weights only: later used in self.filter_importance()
+        """
+        model.save_weights('./my_checkpoint')
+
+        # save each convolution learned filters as txt file
+        motif_weight = model.get_weights()
+        motif_weight = np.asarray(motif_weight[0])
+        for i in range(int(self.filters)):
+            x = motif_weight[:,:,i]
+            berd = np.divide(np.exp(100*x), np.transpose(np.expand_dims(np.sum(np.exp(100*x), axis = 1), axis = 0), [1,0]))
+            np.savetxt(os.path.join('./motif_files', 'filter_num_%d'%i+'.txt'), berd)
+        """
+        pred_train = model.predict(x1_train)
+
+        # See which label has the highest confidence value
+        predictions_train = np.argmax(pred_train, axis=1)
+
+        print(y1_train_orig[0:10])
+        print(predictions_train[0:10])
+
+        true_pred = 0
+        false_pred = 0
+        for count, value in enumerate(predictions_train):
+            if y1_train_orig[count] == predictions_train[count]:
+                true_pred += 1
+            else:
+                false_pred += 1
+        print('Total number of train-set predictions is: ' + str(len(y1_train_orig)))
+        print('Number of correct train-set predictions is: ' + str(true_pred))
+        print('Number of incorrect train-set predictions is: ' + str(false_pred))
+
+        # Compute Area Under the Receiver Operating Characteristic Curve (ROC AUC) from prediction scores.
+        # Returns AUC
+        auc_score = sklearn.metrics.roc_auc_score(y1_train_orig, predictions_train)
+        auPRC = sklearn.metrics.average_precision_score(y1_train_orig, predictions_train)
+        print('train-set auc score is: ' + str(auc_score))
+        print('train-set auPRC score is: ' + str(auPRC))
+        print('train-set seed number is: ' + str(seed))
+
+        ##########################################################
+        # Apply on test data
+        pred_test = model.predict({'forward': x1_test, 'reverse': x2_test})
+        # See which label has the highest confidence value
+        predictions_test = np.argmax(pred_test, axis=1)
+
+        true_pred = 0
+        false_pred = 0
+        for count, value in enumerate(predictions_test):
+            if y1_test_orig[count] == predictions_test[count]:
+                true_pred += 1
+            else:
+                false_pred += 1
+        print('Total number of test-set predictions is: ' + str(len(y1_test_orig)))
+        print('Number of correct test-set predictions is: ' + str(true_pred))
+        print('Number of incorrect test-set predictions is: ' + str(false_pred))
+
+        auc_score = sklearn.metrics.roc_auc_score(y1_test_orig, predictions_test)
+        auPRC = sklearn.metrics.average_precision_score(y1_test_orig, predictions_test)
+        print('test-set auc score is: ' + str(auc_score))
+        print('test-set auPRC score is: ' + str(auPRC))
+        print('test-set seed number is: ' + str(seed))
 
     def filter_importance(self):
         prep = preprocess(self.fasta_file, self.readout_file)
@@ -365,11 +532,13 @@ class nn_model:
         rc_fasta = dict["reverse"]
         readout = dict["readout"]
 
-        seed = random.randint(1,1000)
+        #seed = random.randint(1,1000)
 
-        x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.1, random_state=seed)
+        # Use first half 50% train, second half 50% test --> that's how I set it up systematically
+        x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.5, shuffle=False)
+        #print(x1_train)
         # split for reverse complemenet sequences
-        x2_train, x2_test, y2_train, y2_test = train_test_split(rc_fasta, readout, test_size=0.1, random_state=seed)
+        x2_train, x2_test, y2_train, y2_test = train_test_split(rc_fasta, readout, test_size=0.5, shuffle=False)
         #assert x1_test == x2_test
         #assert y1_test == y2_test
 
@@ -393,10 +562,11 @@ class nn_model:
         y1_test = keras.utils.to_categorical(y1_test, 2)
 
         # train the data
-        model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
+        model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
         ## Save the entire model as a SavedModel.
         ##model.save('my_model')
         # Save weights only: later used in self.filter_importance()
+        """
         model.save_weights('./my_checkpoint')
 
         # save each convolution learned filters as txt file
@@ -406,7 +576,7 @@ class nn_model:
             x = motif_weight[:,:,i]
             berd = np.divide(np.exp(100*x), np.transpose(np.expand_dims(np.sum(np.exp(100*x), axis = 1), axis = 0), [1,0]))
             np.savetxt(os.path.join('./motif_files', 'filter_num_%d'%i+'.txt'), berd)
-
+        """
         pred_train = model.predict({'forward': x1_train, 'reverse': x2_train})
 
         # See which label has the highest confidence value
@@ -429,7 +599,9 @@ class nn_model:
         # Compute Area Under the Receiver Operating Characteristic Curve (ROC AUC) from prediction scores.
         # Returns AUC
         auc_score = sklearn.metrics.roc_auc_score(y1_train_orig, predictions_train)
+        auPRC = sklearn.metrics.average_precision_score(y1_train_orig, predictions_train)
         print('train-set auc score is: ' + str(auc_score))
+        print('train-set auPRC score is: ' + str(auPRC))
         print('train-set seed number is: ' + str(seed))
 
         ##########################################################
@@ -450,7 +622,9 @@ class nn_model:
         print('Number of incorrect test-set predictions is: ' + str(false_pred))
 
         auc_score = sklearn.metrics.roc_auc_score(y1_test_orig, predictions_test)
+        auPRC = sklearn.metrics.average_precision_score(y1_test_orig, predictions_test)
         print('test-set auc score is: ' + str(auc_score))
+        print('test-set auPRC score is: ' + str(auPRC))
         print('test-set seed number is: ' + str(seed))
 
     def hyperopt_tuner(self):
