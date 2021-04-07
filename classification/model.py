@@ -146,12 +146,12 @@ class nn_model:
                      kernel_size=8,
                      input_shape=(dim_num[1],dim_num[2])))
 
-        model.add(tf.keras.layers.MaxPooling1D(pool_size=2,strides=2))
+        model.add(tf.keras.layers.MaxPooling1D(pool_size=4,strides=4))
         model.add(tf.keras.layers.Dropout(rate=0.20))
         #Second Conv1D
         model.add(tf.keras.layers.Conv1D(filters=480,
                      kernel_size=8))
-        model.add(tf.keras.layers.MaxPooling1D(pool_size=2,strides=2))
+        model.add(tf.keras.layers.MaxPooling1D(pool_size=4,strides=4))
         model.add(tf.keras.layers.Dropout(rate=0.20))
         #Third Conv1D
         model.add(tf.keras.layers.Conv1D(filters=960,
@@ -367,7 +367,7 @@ class nn_model:
 
         ##########################################################
         # Apply on test data
-        pred_test = model.predict({'forward': x1_test, 'reverse': x2_test})
+        pred_test = model.predict(x1_test)
         # See which label has the highest confidence value
         predictions_test = np.argmax(pred_test, axis=1)
 
