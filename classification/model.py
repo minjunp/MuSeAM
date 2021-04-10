@@ -165,7 +165,7 @@ class nn_model:
 
         model.compile(loss='binary_crossentropy',
                       optimizer='adam',
-                      metrics=['binary_accuracy'])
+                      metrics=['accuracy'])
 
         model.summary()
 
@@ -295,6 +295,21 @@ class nn_model:
 
         #seed = random.randint(1,1000)
 
+        #print(fw_fasta.shape) # (20400, 199, 4)
+        #print(len(fw_fasta)) # 20400
+        #print(len(readout)) # 20400
+        x1_train = fw_fasta[0:10000, :, :]
+        x1_test = fw_fasta[10001:20000, :, :]
+        x1_valid = fw_fasta[20000:, :, :]
+
+        x2_train = rc_fasta[0:10000, :, :]
+        x2_test = rc_fasta[10001:20000, :, :]
+        x2_valid = rc_fasta[20000:, :, :]
+
+        y1_train = readout[0:10000]
+        y1_test = readout[10001:20000]
+        y1_valid = readout[20000:]
+
         # Use first half 50% train, second half 50% test --> that's how I set it up systematically
         x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.5, shuffle=False)
         #print(x1_train)
@@ -308,8 +323,7 @@ class nn_model:
         # change from list to numpy array
         y1_train = np.asarray(y1_train)
         y1_test = np.asarray(y1_test)
-        y2_train = np.asarray(y2_train)
-        y2_test = np.asarray(y2_test)
+        y1_valid = np.asarray(y1_valid)
 
         # Copy the original target values for later uses
         y1_train_orig = y1_train.copy()
@@ -321,12 +335,30 @@ class nn_model:
         ## Change it to categorical values
         y1_train = keras.utils.to_categorical(y1_train, 2)
         y1_test = keras.utils.to_categorical(y1_test, 2)
+        y1_valid = keras.utils.to_categorical(y1_valid, 2)
 
         # train the data
-        model.fit(x1_train, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
-        ## Save the entire model as a SavedModel.
-        ##model.save('my_model')
-        # Save weights only: later used in self.filter_importance()
+        history = model.fit(x1_train, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_data=(x1_valid, y1_valid))
+
+        save_plot = 'false'
+        if save_plot == 'true':
+            plt.plot(history.history['accuracy'])
+            plt.plot(history.history['val_accuracy'])
+            plt.title('model accuracy')
+            plt.ylabel('accuracy')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'valid'], loc='upper left')
+            plt.savefig('./figs/deepsea_nullseq_accuracy.pdf')
+            plt.figure()
+
+            # summarize history for loss
+            plt.plot(history.history['loss'])
+            plt.plot(history.history['val_loss'])
+            plt.title('model loss')
+            plt.ylabel('loss')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'valid'], loc='upper left')
+            plt.savefig('./figs/deepsea_nullseq_loss.pdf')
         """
         model.save_weights('./my_checkpoint')
 
@@ -388,134 +420,6 @@ class nn_model:
         print('test-set auPRC score is: ' + str(auPRC))
         print('test-set seed number is: ' + str(seed))
 
-    def filter_importance(self):
-        prep = preprocess(self.fasta_file, self.readout_file)
-
-        # if want mono-nucleotide sequences
-        dict = prep.one_hot_encode()
-
-        # if want dinucleotide sequences
-        # dict = prep.dinucleotide_encode()
-
-        # print maximum length without truncation
-        np.set_printoptions(threshold=sys.maxsize)
-
-        fw_fasta = dict["forward"]
-        rc_fasta = dict["reverse"]
-        readout = dict["readout"]
-
-        seed = random.randint(1,1000)
-
-        x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.1, random_state=seed)
-        # split for reverse complemenet sequences
-        x2_train, x2_test, y2_train, y2_test = train_test_split(rc_fasta, readout, test_size=0.1, random_state=seed)
-        #assert x1_test == x2_test
-        #assert y1_test == y2_test
-
-        model = self.create_model()
-
-        # change from list to numpy array
-        y1_train = np.asarray(y1_train)
-        y1_test = np.asarray(y1_test)
-        y2_train = np.asarray(y2_train)
-        y2_test = np.asarray(y2_test)
-
-        # Copy the original target values for later uses
-        y1_train_orig = y1_train.copy()
-        y1_test_orig = y1_test.copy()
-
-        # if we want to merge two training dataset
-        # comb = np.concatenate((y1_train, y2_train))
-
-        ## Change it to categorical values
-        y1_train = keras.utils.to_categorical(y1_train, 2)
-        y1_test = keras.utils.to_categorical(y1_test, 2)
-
-        # Restore the weights
-        #weight_dir = './data/E13RACtrlF1_E13RAMutF1_DMR_toppos2000/checkpoint/my_checkpoint'
-        weight_dir = '/Users/minjunpark/Documents/MuSeAM/classification/saved_weights/my_checkpoint'
-
-        model.load_weights(weight_dir)
-
-        #######*******************************
-        pred_train = model.predict({'forward': x1_train, 'reverse': x2_train})
-
-        # See which label has the highest confidence value
-        predictions_train = np.argmax(pred_train, axis=1)
-
-        print(y1_train_orig[0:10])
-        print(predictions_train[0:10])
-
-        true_pred = 0
-        false_pred = 0
-        for count, value in enumerate(predictions_train):
-            if y1_train_orig[count] == predictions_train[count]:
-                true_pred += 1
-            else:
-                false_pred += 1
-        print('Total number of train-set predictions is: ' + str(len(y1_train_orig)))
-        print('Number of correct train-set predictions is: ' + str(true_pred))
-        print('Number of incorrect train-set predictions is: ' + str(false_pred))
-
-        # Compute Area Under the Receiver Operating Characteristic Curve (ROC AUC) from prediction scores.
-        # Returns AUC
-        auc_score = sklearn.metrics.roc_auc_score(y1_train_orig, predictions_train)
-        print('train-set auc score is: ' + str(auc_score))
-        print('train-set seed number is: ' + str(seed))
-
-        ##########################################################
-        # Apply on test data
-        pred_test = model.predict({'forward': x1_test, 'reverse': x2_test})
-        # See which label has the highest confidence value
-        predictions_test = np.argmax(pred_test, axis=1)
-
-        true_pred = 0
-        false_pred = 0
-        for count, value in enumerate(predictions_test):
-            if y1_test_orig[count] == predictions_test[count]:
-                true_pred += 1
-            else:
-                false_pred += 1
-        print('Total number of test-set predictions is: ' + str(len(y1_test_orig)))
-        print('Number of correct test-set predictions is: ' + str(true_pred))
-        print('Number of incorrect test-set predictions is: ' + str(false_pred))
-
-        auc_score = sklearn.metrics.roc_auc_score(y1_test_orig, predictions_test)
-        print('test-set auc score is: ' + str(auc_score))
-        print('test-set seed number is: ' + str(seed))
-        sys.exit()
-        #######*******************************
-
-        """
-        model.load_weights(weight_dir)
-        weights = model.get_weights()
-
-        # Apply on test data
-        pred_test = model.predict({'forward': x1_test, 'reverse': x2_test})
-        # Sum the absolute difference between y1_test and pred_test
-        vals = np.sum(np.absolute(np.subtract(y1_test, pred_test)), axis=1)
-        baseline = np.average(vals)
-        """
-        distances = []
-        for i in range(self.filters):
-            model.load_weights(weight_dir)
-            weights = model.get_weights()
-
-            zeros = np.zeros((12,4))
-            weights[0][:,:,i] = zeros
-            model.set_weights(weights)
-
-            ##########################################################
-            # Apply on test data
-            pred_test = model.predict({'forward': x1_test, 'reverse': x2_test})
-            # See which label has the highest confidence value
-            vals = np.sum(np.absolute(np.subtract(y1_test, pred_test)), axis=1)
-            ave_distance = np.average(vals)
-            distances.append(ave_distance)
-            print(i)
-        print(distances)
-        np.savetxt('distances.txt', distances)
-
     def eval(self):
         prep = preprocess(self.fasta_file, self.readout_file)
 
@@ -534,6 +438,21 @@ class nn_model:
 
         #seed = random.randint(1,1000)
 
+        #print(fw_fasta.shape) # (20400, 199, 4)
+        #print(len(fw_fasta)) # 20400
+        #print(len(readout)) # 20400
+        x1_train = fw_fasta[0:10000, :, :]
+        x1_test = fw_fasta[10001:20000, :, :]
+        x1_valid = fw_fasta[20000:, :, :]
+
+        x2_train = rc_fasta[0:10000, :, :]
+        x2_test = rc_fasta[10001:20000, :, :]
+        x2_valid = rc_fasta[20000:, :, :]
+
+        y1_train = readout[0:10000]
+        y1_test = readout[10001:20000]
+        y1_valid = readout[20000:]
+
         # Use first half 50% train, second half 50% test --> that's how I set it up systematically
         x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.5, shuffle=False)
         #print(x1_train)
@@ -547,8 +466,7 @@ class nn_model:
         # change from list to numpy array
         y1_train = np.asarray(y1_train)
         y1_test = np.asarray(y1_test)
-        y2_train = np.asarray(y2_train)
-        y2_test = np.asarray(y2_test)
+        y1_valid = np.asarray(y1_valid)
 
         # Copy the original target values for later uses
         y1_train_orig = y1_train.copy()
@@ -560,9 +478,33 @@ class nn_model:
         ## Change it to categorical values
         y1_train = keras.utils.to_categorical(y1_train, 2)
         y1_test = keras.utils.to_categorical(y1_test, 2)
+        y1_valid = keras.utils.to_categorical(y1_valid, 2)
 
         # train the data
-        model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
+        history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_data=({'forward': x1_valid, 'reverse': x2_valid}, y1_valid))
+        ## 12 epochs for shuffled seq
+        ## 17 epochs for null seq
+
+        save_plot = 'false'
+        if save_plot == 'true':
+            plt.plot(history.history['accuracy'])
+            plt.plot(history.history['val_accuracy'])
+            plt.title('model accuracy')
+            plt.ylabel('accuracy')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'valid'], loc='upper left')
+            plt.savefig('./figs/museam_nullseq_accuracy.pdf')
+            plt.figure()
+
+            # summarize history for loss
+            plt.plot(history.history['loss'])
+            plt.plot(history.history['val_loss'])
+            plt.title('model loss')
+            plt.ylabel('loss')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'valid'], loc='upper left')
+            plt.savefig('./figs/museam_nullseq_loss.pdf')
+
         ## Save the entire model as a SavedModel.
         ##model.save('my_model')
         # Save weights only: later used in self.filter_importance()
