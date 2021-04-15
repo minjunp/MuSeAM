@@ -39,8 +39,8 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 #Reproducibility
-#seed = random.randint(1,1000)
-seed = 184
+seed = random.randint(1,1000)
+#seed = 7136
 
 np.random.seed(seed)
 tf.random.set_seed(seed)
@@ -72,7 +72,7 @@ class ConvolutionLayer(Conv1D):
             x_tf = self.kernel  ##x_tf after reshaping is a tensor and not a weight variable :(
             x_tf = tf.transpose(x_tf, [2, 0, 1])
 
-            alpha = 100
+            alpha = 120
             beta = 1/alpha
             bkg = tf.constant([0.295, 0.205, 0.205, 0.295])
             bkg_tf = tf.cast(bkg, tf.float32)
@@ -110,8 +110,9 @@ class nn_model:
         self.optimizer = optimizer
 
         #self.eval()
-        self.cross_val()
-        #self.cross_val_binning()
+        #self.train_entire_model()
+        self.loadWeight()
+        #self.cross_val()
 
     def create_model(self):
         # different metric functions
@@ -255,6 +256,76 @@ class nn_model:
 
         return model
 
+    def train_entire_model(self):
+
+        # Preprocess the data to one-hot encoded vector
+        prep = preprocess(self.fasta_file, self.readout_file)
+
+        dict = prep.one_hot_encode()
+
+        # if want dinucleotide sequences
+        # dict = prep.dinucleotide_encode()
+
+        # print maximum length without truncation
+        np.set_printoptions(threshold=sys.maxsize)
+
+        fw_fasta = dict["forward"]
+        rc_fasta = dict["reverse"]
+        readout = dict["readout"]
+
+        if self.activation_type == 'linear':
+            readout = np.log2(readout)
+            readout = np.ndarray.tolist(readout)
+
+        model = self.create_model()
+        # change from list to numpy array
+        readout = np.asarray(readout)
+        # Without early stopping
+        history = model.fit({'forward': fw_fasta, 'reverse': rc_fasta}, readout, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
+        ## Save weights
+        model.save_weights('./saved_model/museam_all')
+
+        history2 = model.evaluate({'forward': fw_fasta, 'reverse': rc_fasta}, readout)
+        pred = model.predict({'forward': fw_fasta, 'reverse': rc_fasta})
+
+        #viz_prediction(pred, y1_test, '{} regression model'.format(self.loss_func), '{}2.png'.format(self.loss_func))
+
+        print("Seed number is {}".format(seed))
+        print('metric values of model.evaluate: '+ str(history2))
+        print('metrics names are ' + str(model.metrics_names))
+
+    def loadWeight(self):
+        prep = preprocess(self.fasta_file, self.readout_file)
+
+        # if want mono-nucleotide sequences
+        dict = prep.one_hot_encode()
+
+        # if want dinucleotide sequences
+        # dict = prep.dinucleotide_encode()
+
+        # print maximum length without truncation
+        np.set_printoptions(threshold=sys.maxsize)
+
+        fw_fasta = dict["forward"]
+        rc_fasta = dict["reverse"]
+        readout = dict["readout"]
+
+        model = self.create_model()
+
+        # change from list to numpy array
+        fw_fasta = np.asarray(fw_fasta)
+        rc_fasta = np.asarray(rc_fasta)
+
+        # if we want to merge two training dataset
+        # comb = np.concatenate((y1_train, y2_train))
+
+        ## Load weights
+        model.load_weights('./saved_model/museam_all')
+        pred = model.predict({'forward': fw_fasta, 'reverse': rc_fasta})
+        pred = model.predict({'forward': fw_fasta, 'reverse': rc_fasta})
+        np.savetxt('SORT1_pred.txt', pred)
+        print(pred)
+
     def eval(self):
 
         # Preprocess the data to one-hot encoded vector
@@ -291,6 +362,9 @@ class nn_model:
 
         # Without early stopping
         history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
+
+        ## Save weights
+        model.save_weights('./saved_model/museam')
 
         # Early stopping
         #callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)

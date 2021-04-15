@@ -5,4 +5,4 @@ module load bedtools/2.29.2
 Genome="/mount/samee/Genomes/hg38_ucsc/hg38.fa"
 
 # List of bedtools for getfasta, or list of DMR files for DMR processing
-Blist="mutagenesis_peaks.bed"
+Blist="F9.bed LDLR_2.bed SORT1.bed"

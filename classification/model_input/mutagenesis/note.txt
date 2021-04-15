@@ -1,0 +1,6 @@
+sequences length:
+F9: 303
+LDLR_2: 318
+SORT1: 600
+
+--> Extend the sequences when training

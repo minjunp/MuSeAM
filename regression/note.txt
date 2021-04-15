@@ -1,0 +1,1 @@
+python train.py /Users/minjunpark/Documents/MuSeAM/classification/model_input/5k_shuffled_combined.fa /Users/minjunpark/Documents/MuSeAM/classification/model_input/readout.dat parameter1.txt

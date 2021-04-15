@@ -1,0 +1,5 @@
+python train.py ./model_input/5k_shuffled_combined.fa ./model_input/readout.dat parameter1.txt
+
+python train.py /Users/minjunpark/Documents/MuSeAM/classification/model_input/mutagenesis/length171/F9_processed.fa wt_readout.dat parameter1.txt
+python train.py /Users/minjunpark/Documents/MuSeAM/classification/model_input/mutagenesis/length171/LDLR_2_processed.fa wt_readout.dat parameter1.txt
+python train.py /Users/minjunpark/Documents/MuSeAM/classification/model_input/mutagenesis/length171/SORT1_processed.fa wt_readout.dat parameter1.txt

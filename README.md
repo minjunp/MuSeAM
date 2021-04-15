@@ -16,7 +16,7 @@
 
 ```sh
 
-                       __  __       ____          _    __  __ 
+                       __  __       ____          _    __  __
                       |  \/  |_   _/ ___|  ___   / \  |  \/  |
                       | |\/| | | | \___ \ / _ \ / _ \ | |\/| |
                       | |  | | |_| |___) |  __// ___ \| |  | |
@@ -29,10 +29,10 @@
 <br />
 
 <p align="center">
-  
+
   <a href="https://github.com/github_username/repo_name">
-    
-   
+
+
   </a>
 
   <p align="center">
@@ -72,7 +72,7 @@ Install conda environment
 conda env create -f environment.yml
 ```
 
-Activate conda environment 
+Activate conda environment
 
 ```sh
 conda activate museam
@@ -86,7 +86,7 @@ python train.py sequences.fa wt_readout.dat parameters.txt
 
 ## Demo
 
-Demo data 
+Demo data
 
 <p>
   <p>

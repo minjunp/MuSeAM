@@ -1,0 +1,2 @@
+model_checkpoint_path: "museam_shuffled"
+all_model_checkpoint_paths: "museam_shuffled"

@@ -3,5 +3,5 @@ kernel_size 12
 pool_type Max
 regularizer L_1
 activation_type linear
-epochs 15
+epochs 50
 batch_size 512
