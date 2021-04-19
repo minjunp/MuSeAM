@@ -59,6 +59,6 @@ def create_model(self):
     model.summary()
     model.compile(loss='binary_crossentropy',
                   optimizer='adam',
-                  metrics = ['accuracy'])
+                  metrics = [tf.keras.metrics.AUC()])
 
     return model
