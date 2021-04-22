@@ -1,8 +1,14 @@
 import models.MuSeAM_classification as MuSeAM_classification
 import models.MuSeAM_regression as MuSeAM_regression
+import models.MuSeAM_sharpr as MuSeAM_sharpr
+import models.MuSeAM_averagePooling as MuSeAM_averagePooling
+import models.sharpr as sharpr_model
+import models.MuSeAM_horizontal as MuSeAM_horizontal
+import models.MuSeAM_skip_connection as MuSeAM_skip_connection
 
-from preprocess.split_data import splitData
+from saved_model import save_model
 
+from preprocess.split_data import splitData, sharpr
 import numpy as np
 import sys
 
@@ -31,7 +37,7 @@ from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val
 from sklearn.utils import shuffle
 
 #Reproducibility
-seed = 111
+seed = 7163
 np.random.seed(seed)
 tf.random.set_seed(seed)
 
@@ -46,7 +52,52 @@ class nn_model:
         self.batch_size = batch_size
 
         #self.eval()
-        self.cross_val()
+        #self.cross_val()
+        #self.eval_sharpr()
+        self.load_weights()
+        #self.fitAll()
+
+    def eval_sharpr(self):
+        #model = sharpr_model.create_model(self)
+
+        fwd_train, rc_train, readout_train, fwd_test, rc_test, readout_test,fwd_valid, rc_valid, readout_valid = sharpr()
+        #model = MuSeAM_sharpr.create_model(self)
+        #model = MuSeAM_skip_connection.create_model(self)
+        #model = MuSeAM_horizontal.create_model(self)
+        model = MuSeAM_averagePooling.create_model(self)
+
+        #model.fit({'forward': fwd_train, 'reverse': rc_train}, readout_train, epochs=self.epochs, batch_size=self.batch_size,
+        #            validation_split=({'forward': fwd_valid, 'reverse': rc_valid}, readout_valid))
+        model.fit({'forward': fwd_train, 'reverse': rc_train}, readout_train, epochs=self.epochs, batch_size=self.batch_size)
+        predictions = model.predict({'forward': fwd_test, 'reverse': rc_test})
+
+        # Loop over each task
+        spearmans = [spearmanr(readout_test[:, i], predictions[:, i])[0] for i in range(12)]
+        pearsons = [pearsonr(readout_test[:, i], predictions[:, i])[0] for i in range(12)]
+
+        #print(f'pearson averages are: {np.array(pearsons)[[2,5,8,11]]}')
+        print(f'spearman averages are: {np.array(spearmans)[[2,5,8,11]]}')
+        print(f'Mean spearman is {np.mean(spearmans)}')
+
+    def load_weights(self):
+        fwd_train, rc_train, readout_train, fwd_test, rc_test, readout_test,fwd_valid, rc_valid, readout_valid = sharpr()
+        model = MuSeAM_sharpr.create_model(self)
+        reconstructed_model = keras.models.load_model("./saved_model/MuSeAM_regression/regression_model", compile=False)
+        #print(reconstructed_model.layers[2].get_weights()[0].shape)
+        filters = reconstructed_model.layers[2].get_weights()
+        model.layers[2].set_weights(filters)
+
+        model.fit({'forward': fwd_train, 'reverse': rc_train}, readout_train, epochs=self.epochs, batch_size=self.batch_size)
+        predictions = model.predict({'forward': fwd_test, 'reverse': rc_test})
+
+        # Loop over each task
+        spearmans = [spearmanr(readout_test[:, i], predictions[:, i])[0] for i in range(12)]
+        pearsons = [pearsonr(readout_test[:, i], predictions[:, i])[0] for i in range(12)]
+
+        #print(f'pearson averages are: {np.array(pearsons)[[2,5,8,11]]}')
+        print(f'spearman averages are: {np.array(spearmans)[[2,5,8,11]]}')
+        print(f'Mean spearman is {np.mean(spearmans)}')
+
 
     def eval(self):
         fwd_train, fwd_test, rc_train, rc_test, readout_train, readout_test = splitData(self.fasta_file,
@@ -55,6 +106,7 @@ class nn_model:
                                                                                         'binary_classification')
 
         model = MuSeAM_classification.create_model(self)
+
         model.fit({'forward': fwd_train, 'reverse': rc_train}, readout_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
         pred_train = model.predict({'forward': fwd_train, 'reverse': rc_train})
         trainAUC = sklearn.metrics.roc_auc_score(readout_train, pred_train)
@@ -63,6 +115,17 @@ class nn_model:
         pred_test = model.predict({'forward': fwd_test, 'reverse': rc_test})
         testAUC = sklearn.metrics.roc_auc_score(readout_test, pred_test)
         print('Test-data AUC is ', testAUC)
+
+    def fitAll(self):
+        fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,
+                                                self.readout_file,
+                                                'fitAll')
+        model = MuSeAM_regression.create_model(self)
+        model.fit({'forward': fwd_fasta, 'reverse': rc_fasta}, readout, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
+        history = model.evaluate({'forward': fwd_fasta, 'reverse': rc_fasta}, readout)
+        print(history) # [0.045967694371938705, 0.931830644607544, 0.9492059946060181]
+
+        save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression')
 
     def cross_val(self):
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,

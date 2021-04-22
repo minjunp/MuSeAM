@@ -1,6 +1,6 @@
 import tensorflow as tf
 from keras.models import Model
-from tensorflow.keras.layers import Dense, concatenate, GlobalMaxPool1D, Conv1D
+from tensorflow.keras.layers import Dense, concatenate, GlobalMaxPool1D, Conv1D, AveragePooling1D, GlobalAveragePooling1D
 from tensorflow.keras import backend as K, regularizers
 import keras
 from scipy.stats import spearmanr, pearsonr
@@ -53,15 +53,15 @@ def create_model(self):
         return tf.py_function(spearmanr, [tf.cast(y_pred, tf.float32),
                tf.cast(y_true, tf.float32)], Tout=tf.float32)
 
-    fw_input = keras.Input(shape=(171,4), name = 'forward')
-    rc_input = keras.Input(shape=(171,4), name = 'reverse')
+    fw_input = keras.Input(shape=(145,4), name = 'forward')
+    rc_input = keras.Input(shape=(145,4), name = 'reverse')
 
     customConv = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', use_bias = True)
     fw = customConv(fw_input)
     rc = customConv(rc_input)
     concat = concatenate([fw, rc], axis=1)
-    globalPooling = GlobalMaxPool1D()(concat)
-    outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(globalPooling)
+    globalPooling = GlobalAveragePooling1D()(concat)
+    outputs = Dense(12, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(globalPooling)
 
     model = keras.Model(inputs=[fw_input, rc_input], outputs=outputs)
     model.summary()

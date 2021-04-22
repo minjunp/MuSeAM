@@ -1,11 +1,11 @@
 #!/bin/bash
 
-work_dir="/project/samee/minjun/museam_runs"
-output_base_dir="${work_dir}/outputs"
-par_output_dir="${work_dir}/pars"
-fasta_file="/project/samee/minjun/methylation/classification/LACtrlF1_E13_combined.fa"
-readout_file="/project/samee/minjun/methylation/classification/wt_readout.dat"
-train_file="/project/samee/minjun/methylation/classification/train.py"
+#work_dir="/project/samee/minjun/museam_runs"
+output_base_dir="outputs"
+par_output_dir="pars"
+fasta_file="sequences.fa"
+readout_file="wt_readout.dat"
+train_file="train.py"
 
 if [ -d ${output_base_dir} ]
 then
@@ -19,9 +19,9 @@ mkdir -p ${output_base_dir}
 #code="/project/samee/minjun/mpra/code/dummy.py"
 
 index=0
-for filters in 16 256 512
+for filters in 512 1024
 do
-  for kernel_size in 12 16
+  for kernel_size in 5 12 16
   do
     for pool_type in Max
     do
@@ -43,16 +43,7 @@ do
               echo "epochs "${epochs} >> ${parameter_file_name}
               echo "batch_size "${batch_size} >> ${parameter_file_name}
               output_dir="${output_base_dir}/out_${index}"
-              #if [ -d ${output_dir} ]
-              #then
-              #  rm -rf ${output_dir}
-              #fi
-              #mkdir -p ${output_dir}
-
-          		python ${train_file} ${fasta_file} ${readout_file} ${parameter_file_name} > ${output_base_dir}/${index}.txt
-
-              #echo "output_dir "${output_dir} >> ${parameter_file_name}
-          		#echo "sleep 5m" >> ${exec_file}
+			  python ${train_file} ${fasta_file} ${readout_file} ${parameter_file_name} > ${output_base_dir}/${index}.txt
             done
           done
         done

@@ -30,7 +30,7 @@ class ConvolutionLayer(Conv1D):
             x_tf = self.kernel  ##x_tf after reshaping is a tensor and not a weight variable :(
             x_tf = tf.transpose(x_tf, [2, 0, 1])
 
-            alpha = 120
+            alpha = 100
             beta = 1/alpha
             bkg = tf.constant([0.25, 0.25, 0.25, 0.25])
             bkg_tf = tf.cast(bkg, tf.float32)
@@ -53,19 +53,48 @@ def create_model(self):
         return tf.py_function(spearmanr, [tf.cast(y_pred, tf.float32),
                tf.cast(y_true, tf.float32)], Tout=tf.float32)
 
-    fw_input = keras.Input(shape=(171,4), name = 'forward')
-    rc_input = keras.Input(shape=(171,4), name = 'reverse')
+    fw_input = keras.Input(shape=(145,4), name = 'forward')
+    rc_input = keras.Input(shape=(145,4), name = 'reverse')
 
     customConv = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', use_bias = True)
     fw = customConv(fw_input)
     rc = customConv(rc_input)
     concat = concatenate([fw, rc], axis=1)
     globalPooling = GlobalMaxPool1D()(concat)
-    outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(globalPooling)
+
+    fc1 = Dense(64)(globalPooling)
+    fc2 = Dense(64)(globalPooling)
+    fc3 = Dense(64)(globalPooling)
+    fc4 = Dense(64)(globalPooling)
+    fc5 = Dense(64)(globalPooling)
+    fc6 = Dense(64)(globalPooling)
+    fc7 = Dense(64)(globalPooling)
+    fc8 = Dense(64)(globalPooling)
+    fc9 = Dense(64)(globalPooling)
+    fc10 = Dense(64)(globalPooling)
+    fc11 = Dense(64)(globalPooling)
+    fc12 = Dense(64)(globalPooling)
+
+    out1 = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(fc1)
+    out2 = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(fc2)
+    out3 = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(fc3)
+    out4 = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(fc4)
+    out5 = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(fc5)
+    out6 = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(fc6)
+    out7 = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(fc7)
+    out8 = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(fc8)
+    out9 = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(fc9)
+    out10 = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(fc10)
+    out11 = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(fc11)
+    out12 = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(fc12)
+
+    outputs =concatenate([out1, out2, out3,
+                          out4, out5, out6,
+                          out7, out8, out9,
+                          out10, out11, out12], axis=1)
 
     model = keras.Model(inputs=[fw_input, rc_input], outputs=outputs)
     model.summary()
-
     model.compile(loss= 'mean_squared_error',
                   optimizer= 'adam',
                   metrics = [coeff_determination, spearman_fn])

@@ -57,8 +57,8 @@ def create_model(self):
 
     model = keras.Model(inputs=[fw_input, rc_input], outputs=outputs)
     model.summary()
-    model.compile(loss='binary_crossentropy',
-                  optimizer='adam',
+    model.compile(loss= 'binary_crossentropy',
+                  optimizer= 'adam',
                   metrics = [tf.keras.metrics.AUC()])
 
     return model

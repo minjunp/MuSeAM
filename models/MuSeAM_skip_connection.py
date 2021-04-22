@@ -1,9 +1,8 @@
 import tensorflow as tf
 from keras.models import Model
-from tensorflow.keras.layers import Dense, concatenate, GlobalMaxPool1D, Conv1D
+from tensorflow.keras.layers import Dense, concatenate, GlobalMaxPool1D, Conv1D, ReLU, MaxPooling1D, Flatten
 from tensorflow.keras import backend as K, regularizers
 import keras
-from scipy.stats import spearmanr, pearsonr
 
 class ConvolutionLayer(Conv1D):
     def __init__(self, filters,
@@ -30,7 +29,7 @@ class ConvolutionLayer(Conv1D):
             x_tf = self.kernel  ##x_tf after reshaping is a tensor and not a weight variable :(
             x_tf = tf.transpose(x_tf, [2, 0, 1])
 
-            alpha = 120
+            alpha = 100
             beta = 1/alpha
             bkg = tf.constant([0.25, 0.25, 0.25, 0.25])
             bkg_tf = tf.cast(bkg, tf.float32)
@@ -45,29 +44,32 @@ class ConvolutionLayer(Conv1D):
         return outputs
 
 def create_model(self):
-    def coeff_determination(y_true, y_pred):
-        SS_res =  K.sum(K.square( y_true-y_pred ))
-        SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
-        return (1 - SS_res/(SS_tot + K.epsilon()))
-    def spearman_fn(y_true, y_pred):
-        return tf.py_function(spearmanr, [tf.cast(y_pred, tf.float32),
-               tf.cast(y_true, tf.float32)], Tout=tf.float32)
+        fw_input = keras.Input(shape=(145,4), name = 'forward')
+        rc_input = keras.Input(shape=(145,4), name = 'reverse')
 
-    fw_input = keras.Input(shape=(171,4), name = 'forward')
-    rc_input = keras.Input(shape=(171,4), name = 'reverse')
+        customConv = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', use_bias = True)
+        fw = customConv(fw_input)
+        rc = customConv(rc_input)
 
-    customConv = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', use_bias = True)
-    fw = customConv(fw_input)
-    rc = customConv(rc_input)
-    concat = concatenate([fw, rc], axis=1)
-    globalPooling = GlobalMaxPool1D()(concat)
-    outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(globalPooling)
+        concat = concatenate([fw, rc], axis=1)
+        concat_relu = ReLU()(concat)
 
-    model = keras.Model(inputs=[fw_input, rc_input], outputs=outputs)
-    model.summary()
+        # Path 1
+        globalPooling = GlobalMaxPool1D()(concat_relu)
+        # Path 2
+        local_maxpool = MaxPooling1D(pool_size=4)(concat_relu)
+        conv1 = Conv1D(filters=200, kernel_size=7)(local_maxpool)
+        local_maxpool2 = MaxPooling1D(pool_size=4)(conv1)
+        local_maxpool2 = Flatten()(local_maxpool2)
 
-    model.compile(loss= 'mean_squared_error',
-                  optimizer= 'adam',
-                  metrics = [coeff_determination, spearman_fn])
+        concat2 = concatenate([globalPooling, local_maxpool2], axis=1)
+        outputs = Dense(12, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(concat2)
 
-    return model
+        model = keras.Model(inputs=[fw_input, rc_input], outputs=outputs)
+
+        model.summary()
+        model.compile(loss= 'mean_squared_error',
+                      optimizer= 'adam',
+                      metrics = ['accuracy'])
+
+        return model
