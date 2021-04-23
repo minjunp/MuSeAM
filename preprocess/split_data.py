@@ -2,11 +2,13 @@ from .preprocess_data import preprocess
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score, KFold
 import numpy as np
 import keras
+import sys
 
-def sharpr():
+def sharpr(dtype):
     # Load Train, Test, and Valid data
     train_seq = np.load('./data/sharpr/train_seqs.npy')
     train_readout = np.load('./data/sharpr/train_readout.npy')
+
     fwd_train = train_seq[::2, :, :]
     rc_train = train_seq[1::2, :, :]
     readout_train = train_readout[::2, :]
@@ -15,13 +17,15 @@ def sharpr():
     rc_test = np.load('./data/sharpr/test_seqs_rc.npy')
     readout_test = np.load('./data/sharpr/test_readout.npy')
 
-    valid_seq = np.load('./data/sharpr/valid_seqs.npy')
-    valid_readout = np.load('./data/sharpr/valid_readout.npy')
-    fwd_valid = valid_seq[::2, :, :]
-    rc_valid = valid_seq[1::2, :, :]
-    readout_valid = valid_readout[::2, :]
+    fwd_valid = np.load('./data/sharpr/valid_seqs_fwd.npy')
+    rc_valid = np.load('./data/sharpr/valid_seqs_rc.npy')
+    readout_valid = np.load('./data/sharpr/valid_readout.npy')
 
-    return fwd_train, rc_train, readout_train, fwd_test, rc_test, readout_test,fwd_valid, rc_valid, readout_valid
+    if dtype == 'two-inputs':
+        return fwd_train, rc_train, readout_train, fwd_test, rc_test, readout_test,fwd_valid, rc_valid, readout_valid
+
+    if dtype == 'one-input':
+        return train_seq, train_readout, fwd_test, readout_test, fwd_valid, readout_valid
 
 def splitData(fasta_file, readout_file, partitionType = None, taskType = None):
     prep = preprocess(fasta_file, readout_file)

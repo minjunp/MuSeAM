@@ -1,6 +1,6 @@
 import tensorflow as tf
 from keras.models import Model
-from tensorflow.keras.layers import Dense, concatenate, GlobalMaxPool1D, Conv1D, AveragePooling1D, GlobalAveragePooling1D
+from tensorflow.keras.layers import Dense, concatenate, GlobalMaxPool1D, Conv1D, AveragePooling1D, GlobalAveragePooling1D, ReLU
 from tensorflow.keras import backend as K, regularizers
 import keras
 from scipy.stats import spearmanr, pearsonr
@@ -32,7 +32,7 @@ class ConvolutionLayer(Conv1D):
 
             alpha = 120
             beta = 1/alpha
-            bkg = tf.constant([0.25, 0.25, 0.25, 0.25])
+            bkg = tf.constant([0.295, 0.205, 0.205, 0.295])
             bkg_tf = tf.cast(bkg, tf.float32)
             filt_list = tf.map_fn(lambda x: tf.math.scalar_mul(beta, tf.subtract(tf.subtract(tf.subtract(tf.math.scalar_mul(alpha, x), tf.expand_dims(tf.math.reduce_max(tf.math.scalar_mul(alpha, x), axis = 1), axis = 1)), tf.expand_dims(tf.math.log(tf.math.reduce_sum(tf.math.exp(tf.subtract(tf.math.scalar_mul(alpha, x), tf.expand_dims(tf.math.reduce_max(tf.math.scalar_mul(alpha, x), axis = 1), axis = 1))), axis = 1)), axis = 1)), tf.math.log(tf.reshape(tf.tile(bkg_tf, [tf.shape(x)[0]]), [tf.shape(x)[0], tf.shape(bkg_tf)[0]])))), x_tf)
             transf = tf.transpose(filt_list, [1, 2, 0])
@@ -59,11 +59,15 @@ def create_model(self):
     customConv = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', use_bias = True)
     fw = customConv(fw_input)
     rc = customConv(rc_input)
-    concat = concatenate([fw, rc], axis=1)
-    globalPooling = GlobalAveragePooling1D()(concat)
+
+    max_element = tf.math.maximum(fw, rc)
+    relu = ReLU()(max_element)
+
+    globalPooling = GlobalAveragePooling1D()(relu)
     outputs = Dense(12, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(globalPooling)
 
     model = keras.Model(inputs=[fw_input, rc_input], outputs=outputs)
+    #keras.utils.plot_model(model, "MuSeAM_averagePooling.png")
     model.summary()
 
     model.compile(loss= 'mean_squared_error',

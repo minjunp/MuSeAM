@@ -11,7 +11,8 @@ if [ -d ${output_base_dir} ]
 then
 	rm -rf ${output_base_dir}
 fi
-mkdir -p ${output_base_dir}
+#mkdir -p ${output_base_dir}
+mkdir -p ${par_output_dir}
 
 #exec_file="${work_dir}/parameter_search.sh"
 #echo "#!/bin/bash" > ${exec_file}
@@ -19,9 +20,9 @@ mkdir -p ${output_base_dir}
 #code="/project/samee/minjun/mpra/code/dummy.py"
 
 index=0
-for filters in 512 1024
+for filters in 896
 do
-  for kernel_size in 5 12 16
+  for kernel_size in 12 16
   do
     for pool_type in Max
     do
@@ -29,9 +30,9 @@ do
       do
         for activation_type in linear
         do
-          for epochs in 30 40 50
+          for epochs in 30
           do
-            for batch_size in 512
+            for batch_size in 512 1024 2048 4096 10000 20000
             do
               let index=index+1
               parameter_file_name="${par_output_dir}/parameters_"${index}".txt"
@@ -42,8 +43,8 @@ do
               echo "activation_type "${activation_type} >> ${parameter_file_name}
               echo "epochs "${epochs} >> ${parameter_file_name}
               echo "batch_size "${batch_size} >> ${parameter_file_name}
-              output_dir="${output_base_dir}/out_${index}"
-			  python ${train_file} ${fasta_file} ${readout_file} ${parameter_file_name} > ${output_base_dir}/${index}.txt
+              #output_dir="${output_base_dir}/out_${index}"
+			  #python ${train_file} ${fasta_file} ${readout_file} ${parameter_file_name} > ${output_base_dir}/${index}.txt
             done
           done
         done

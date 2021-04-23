@@ -3,8 +3,10 @@ import models.MuSeAM_regression as MuSeAM_regression
 import models.MuSeAM_sharpr as MuSeAM_sharpr
 import models.MuSeAM_averagePooling as MuSeAM_averagePooling
 import models.sharpr as sharpr_model
+import models.MuSeAM_sharpr_single_input as MuSeAM_sharpr_single_input
 import models.MuSeAM_horizontal as MuSeAM_horizontal
 import models.MuSeAM_skip_connection as MuSeAM_skip_connection
+
 
 from saved_model import save_model
 
@@ -53,42 +55,70 @@ class nn_model:
 
         #self.eval()
         #self.cross_val()
-        #self.eval_sharpr()
-        self.load_weights()
+        self.eval_sharpr()
+        #self.load_weights()
         #self.fitAll()
 
     def eval_sharpr(self):
-        #model = sharpr_model.create_model(self)
+        #dtype = 'two-inputs'
+        dtype = 'one-input'
 
-        fwd_train, rc_train, readout_train, fwd_test, rc_test, readout_test,fwd_valid, rc_valid, readout_valid = sharpr()
-        #model = MuSeAM_sharpr.create_model(self)
-        #model = MuSeAM_skip_connection.create_model(self)
-        #model = MuSeAM_horizontal.create_model(self)
-        model = MuSeAM_averagePooling.create_model(self)
+        if dtype == 'two-inputs':
+            fwd_train, rc_train, readout_train, fwd_test, rc_test, readout_test, fwd_valid, rc_valid, readout_valid = sharpr(dtype)
+            #model = MuSeAM_sharpr.create_model(self)
+            #model = MuSeAM_skip_connection.create_model(self)
+            #model = MuSeAM_horizontal.create_model(self)
+            model = MuSeAM_averagePooling.create_model(self)
+            #model = sharpr_model.create_model(self)
 
-        #model.fit({'forward': fwd_train, 'reverse': rc_train}, readout_train, epochs=self.epochs, batch_size=self.batch_size,
-        #            validation_split=({'forward': fwd_valid, 'reverse': rc_valid}, readout_valid))
-        model.fit({'forward': fwd_train, 'reverse': rc_train}, readout_train, epochs=self.epochs, batch_size=self.batch_size)
-        predictions = model.predict({'forward': fwd_test, 'reverse': rc_test})
+            model.fit({'forward': fwd_train, 'reverse': rc_train}, readout_train, epochs=self.epochs, batch_size=self.batch_size, validation_data=({'forward': fwd_valid, 'reverse': rc_valid}, readout_valid))
+            predictions = model.predict({'forward': fwd_test, 'reverse': rc_test})
+            predictions_valid = model.predict({'forward': fwd_valid, 'reverse': rc_valid})
+
+        if dtype == 'one-input':
+            train_seq, train_readout, fwd_test, readout_test, fwd_valid, readout_valid = sharpr(dtype)
+            model = MuSeAM_sharpr_single_input.create_model(self)
+
+            model.fit(train_seq, train_readout, epochs=self.epochs, batch_size=self.batch_size, validation_data=(fwd_valid, readout_valid))
+            predictions = model.predict(fwd_test)
+            predictions_valid = model.predict(fwd_valid)
 
         # Loop over each task
         spearmans = [spearmanr(readout_test[:, i], predictions[:, i])[0] for i in range(12)]
         pearsons = [pearsonr(readout_test[:, i], predictions[:, i])[0] for i in range(12)]
 
-        #print(f'pearson averages are: {np.array(pearsons)[[2,5,8,11]]}')
-        print(f'spearman averages are: {np.array(spearmans)[[2,5,8,11]]}')
-        print(f'Mean spearman is {np.mean(spearmans)}')
+        spearmans_valid = [spearmanr(readout_valid[:, i], predictions_valid[:, i])[0] for i in range(12)]
+        pearsons_valid = [pearsonr(readout_valid[:, i], predictions_valid[:, i])[0] for i in range(12)]
+
+        print(f'Test spearman averages are: {np.array(spearmans)[[2,5,8,11]]}')
+        print(f'Test Mean spearman is {np.mean(spearmans)}')
+
+        print(f'Validation spearman averages are: {np.array(spearmans_valid)[[2,5,8,11]]}')
+        print(f'Validation Mean spearman is {np.mean(spearmans_valid)}')
 
     def load_weights(self):
-        fwd_train, rc_train, readout_train, fwd_test, rc_test, readout_test,fwd_valid, rc_valid, readout_valid = sharpr()
-        model = MuSeAM_sharpr.create_model(self)
         reconstructed_model = keras.models.load_model("./saved_model/MuSeAM_regression/regression_model", compile=False)
-        #print(reconstructed_model.layers[2].get_weights()[0].shape)
-        filters = reconstructed_model.layers[2].get_weights()
-        model.layers[2].set_weights(filters)
 
-        model.fit({'forward': fwd_train, 'reverse': rc_train}, readout_train, epochs=self.epochs, batch_size=self.batch_size)
-        predictions = model.predict({'forward': fwd_test, 'reverse': rc_test})
+        #dtype = 'two-inputs'
+        dtype = 'one-input'
+
+        if dtype == 'two-inputs':
+            fwd_train, rc_train, readout_train, fwd_test, rc_test, readout_test,fwd_valid, rc_valid, readout_valid = sharpr()
+            model = MuSeAM_sharpr.create_model(self)
+            #print(reconstructed_model.layers[2].get_weights()[0].shape)
+            filters = reconstructed_model.layers[2].get_weights()
+            model.layers[2].set_weights(filters)
+
+            model.fit({'forward': fwd_train, 'reverse': rc_train}, readout_train, epochs=self.epochs, batch_size=self.batch_size)
+            predictions = model.predict({'forward': fwd_test, 'reverse': rc_test})
+        if dtype == 'one-input':
+            train_seq, train_readout, fwd_test, readout_test, fwd_valid, readout_valid = sharpr(dtype)
+            model = MuSeAM_sharpr_single_input.create_model(self)
+            filters = reconstructed_model.layers[2].get_weights()
+            model.layers[1].set_weights(filters)
+
+            model.fit(train_seq, train_readout, epochs=self.epochs, batch_size=self.batch_size, validation_data=(fwd_valid, readout_valid))
+            predictions = model.predict(fwd_test)
 
         # Loop over each task
         spearmans = [spearmanr(readout_test[:, i], predictions[:, i])[0] for i in range(12)]

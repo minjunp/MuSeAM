@@ -1,6 +1,6 @@
-filters 512
+filters 896
 kernel_size 12
 pool_type Max
 regularizer L_1
-epochs 25
-batch_size 57
+epochs 4
+batch_size 512

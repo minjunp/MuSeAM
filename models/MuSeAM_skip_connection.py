@@ -31,7 +31,7 @@ class ConvolutionLayer(Conv1D):
 
             alpha = 100
             beta = 1/alpha
-            bkg = tf.constant([0.25, 0.25, 0.25, 0.25])
+            bkg = tf.constant([0.295, 0.205, 0.205, 0.295])
             bkg_tf = tf.cast(bkg, tf.float32)
             filt_list = tf.map_fn(lambda x: tf.math.scalar_mul(beta, tf.subtract(tf.subtract(tf.subtract(tf.math.scalar_mul(alpha, x), tf.expand_dims(tf.math.reduce_max(tf.math.scalar_mul(alpha, x), axis = 1), axis = 1)), tf.expand_dims(tf.math.log(tf.math.reduce_sum(tf.math.exp(tf.subtract(tf.math.scalar_mul(alpha, x), tf.expand_dims(tf.math.reduce_max(tf.math.scalar_mul(alpha, x), axis = 1), axis = 1))), axis = 1)), axis = 1)), tf.math.log(tf.reshape(tf.tile(bkg_tf, [tf.shape(x)[0]]), [tf.shape(x)[0], tf.shape(bkg_tf)[0]])))), x_tf)
             transf = tf.transpose(filt_list, [1, 2, 0])
@@ -68,6 +68,7 @@ def create_model(self):
         model = keras.Model(inputs=[fw_input, rc_input], outputs=outputs)
 
         model.summary()
+        #keras.utils.plot_model(model, "MuSeAM_skip_connection.png")
         model.compile(loss= 'mean_squared_error',
                       optimizer= 'adam',
                       metrics = ['accuracy'])
