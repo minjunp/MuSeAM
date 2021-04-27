@@ -6,6 +6,7 @@ import models.sharpr as sharpr_model
 import models.MuSeAM_sharpr_single_input as MuSeAM_sharpr_single_input
 import models.MuSeAM_horizontal as MuSeAM_horizontal
 import models.MuSeAM_skip_connection as MuSeAM_skip_connection
+import models.MuSeAM_regression_pooling_layer as MuSeAM_regression_pooling_layer
 
 
 from saved_model import save_model
@@ -55,9 +56,10 @@ class nn_model:
 
         #self.eval()
         #self.cross_val()
-        self.eval_sharpr()
+        #self.eval_sharpr()
         #self.load_weights()
         #self.fitAll()
+        self.pooling_layer()
 
     def eval_sharpr(self):
         #dtype = 'two-inputs'
@@ -132,19 +134,23 @@ class nn_model:
     def eval(self):
         fwd_train, fwd_test, rc_train, rc_test, readout_train, readout_test = splitData(self.fasta_file,
                                                                                         self.readout_file,
-                                                                                        'leaveOneOut',
-                                                                                        'binary_classification')
+                                                                                        partitionType = 'leaveOneOut',
+                                                                                        taskType = None)
+        #model = MuSeAM_classification.create_model(self)
+        # trainAUC = sklearn.metrics.roc_auc_score(readout_train, pred_train)
+        # print('Train-data AUC is ', trainAUC)
+        # testAUC = sklearn.metrics.roc_auc_score(readout_test, pred_test)
+        # print('Test-data AUC is ', testAUC)
 
-        model = MuSeAM_classification.create_model(self)
+        model = MuSeAM_regression.create_model(self)
 
-        model.fit({'forward': fwd_train, 'reverse': rc_train}, readout_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
+        model.fit({'forward': fwd_train, 'reverse': rc_train}, readout_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
         pred_train = model.predict({'forward': fwd_train, 'reverse': rc_train})
-        trainAUC = sklearn.metrics.roc_auc_score(readout_train, pred_train)
-        print('Train-data AUC is ', trainAUC)
-
         pred_test = model.predict({'forward': fwd_test, 'reverse': rc_test})
-        testAUC = sklearn.metrics.roc_auc_score(readout_test, pred_test)
-        print('Test-data AUC is ', testAUC)
+
+        # motif_weight = model.get_weights()
+        # dense_weight = motif_weight[2]
+        # np.savetxt('dense_weights_v1.txt', dense_weight)
 
     def fitAll(self):
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,
@@ -153,9 +159,18 @@ class nn_model:
         model = MuSeAM_regression.create_model(self)
         model.fit({'forward': fwd_fasta, 'reverse': rc_fasta}, readout, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
         history = model.evaluate({'forward': fwd_fasta, 'reverse': rc_fasta}, readout)
-        print(history) # [0.045967694371938705, 0.931830644607544, 0.9492059946060181]
+        print(history) ## [0.11433766782283783, 0.5864769220352173, 0.7424215078353882]
 
-        save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression')
+        save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_synthetic_removed')
+
+    def pooling_layer(self):
+        fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,
+                                                self.readout_file,
+                                                'fitAll')
+        model, model2 = MuSeAM_regression_pooling_layer.create_model(self)
+        model.fit({'forward': fwd_fasta, 'reverse': rc_fasta}, readout, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
+        pooling_output = model2.predict({'forward': fwd_fasta, 'reverse': rc_fasta})
+        np.savetxt('./post-hoc/protein-protein/pooling_output.txt', pooling_output)
 
     def cross_val(self):
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,

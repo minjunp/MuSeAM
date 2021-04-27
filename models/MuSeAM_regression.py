@@ -1,6 +1,6 @@
 import tensorflow as tf
 from keras.models import Model
-from tensorflow.keras.layers import Dense, concatenate, GlobalMaxPool1D, Conv1D
+from tensorflow.keras.layers import Dense, concatenate, GlobalMaxPool1D, Conv1D, ReLU
 from tensorflow.keras import backend as K, regularizers
 import keras
 from scipy.stats import spearmanr, pearsonr
@@ -60,7 +60,10 @@ def create_model(self):
     fw = customConv(fw_input)
     rc = customConv(rc_input)
     concat = concatenate([fw, rc], axis=1)
-    globalPooling = GlobalMaxPool1D()(concat)
+
+    activation = ReLU()(concat)
+
+    globalPooling = GlobalMaxPool1D()(activation)
     outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(globalPooling)
 
     model = keras.Model(inputs=[fw_input, rc_input], outputs=outputs)

@@ -1,6 +1,6 @@
 import tensorflow as tf
 from keras.models import Model
-from tensorflow.keras.layers import Dense, concatenate, GlobalMaxPool1D, Conv1D
+from tensorflow.keras.layers import Dense, concatenate, GlobalMaxPool1D, Conv1D, ReLU
 from tensorflow.keras import backend as K, regularizers
 import keras
 from scipy.stats import spearmanr, pearsonr
@@ -56,7 +56,11 @@ def create_model(self):
     singleInput = keras.Input(shape=(145,4), name = 'input')
     customConv = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', use_bias = True)
     conv = customConv(singleInput)
-    globalPooling = GlobalMaxPool1D()(conv)
+
+    activation = tf.math.sigmoid(conv)
+    #activation = ReLU()(conv)
+
+    globalPooling = GlobalMaxPool1D()(activation)
 
     fc1 = Dense(64)(globalPooling)
     fc2 = Dense(64)(globalPooling)
