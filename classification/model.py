@@ -42,8 +42,9 @@ from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val
 from sklearn.utils import shuffle
 
 #Reproducibility
-seed = random.randint(1,1000)
+#seed = random.randint(1,1000)
 
+seed = 111
 np.random.seed(seed)
 tf.random.set_seed(seed)
 
@@ -122,27 +123,18 @@ class nn_model:
             SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
             return (1 - SS_res/(SS_tot + K.epsilon()))
 
+        @tf.function()
+        def spearman_fn(y_true, y_pred):
+            return tf.py_function(spearmanr, [tf.cast(y_pred, tf.float32),
+                   tf.cast(y_true, tf.float32)], Tout=tf.float32)
 
         def auroc(y_true, y_pred):
             return tf.py_func(roc_auc_score, (y_true, y_pred), tf.double)
 
-        # building model
-        prep = preprocess(self.fasta_file, self.readout_file)
-        # if want mono-nucleotide sequences
-        dict = prep.one_hot_encode()
-        # if want dinucleotide sequences
-        #dict = prep.dinucleotide_encode()
-
-        readout = dict["readout"]
-        fw_fasta = dict["forward"]
-        rc_fasta = dict["reverse"]
-
-        dim_num = fw_fasta.shape
-
         # To build this model with the functional API,
         # you would start by creating an input node:
-        forward = keras.Input(shape=(dim_num[1],dim_num[2]), name = 'forward')
-        reverse = keras.Input(shape=(dim_num[1],dim_num[2]), name = 'reverse')
+        forward = keras.Input(shape=(145,4), name = 'forward')
+        reverse = keras.Input(shape=(145,4), name = 'reverse')
 
         #first_layer = Conv1D(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', input_shape=(dim_num[1],dim_num[2]), use_bias = False)
         ## with trainable = False
@@ -194,19 +186,7 @@ class nn_model:
 
         after_flat = Dense(32)(flat)
 
-        # Binary classification with 2 output neurons
-        if self.regularizer == 'L_1':
-            #outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation= self.activation_type)(flat)
-            ## trainable = False with learned bias
-
-            #outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation= self.activation_type)(after_flat)
-            outputs = Dense(2, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation= 'sigmoid')(after_flat)
-        elif self.regularizer == 'L_2':
-            #outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation= self.activation_type)(flat)
-            ## trainable = False with learned bias
-            outputs = Dense(2, kernel_initializer='normal', kernel_regularizer=regularizers.l2(0.001), activation= self.activation_type)(after_flat)
-        else:
-            raise NameError('Set the regularizer name correctly')
+        outputs = Dense(12, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation= 'sigmoid')(after_flat)
 
         #weight_forwardin_0=model.layers[0].get_weights()[0]
         #print(weight_forwardin_0)
@@ -216,199 +196,50 @@ class nn_model:
         model.summary()
 
         #model.compile(loss='mean_squared_error', optimizer='adam', metrics = ['accuracy'])
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics = ['accuracy'])
-        #model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy', auroc])
+        model.compile(loss= "mean_squared_error", optimizer='adam', metrics = [coeff_determination, spearman_fn])
 
         return model
 
-    def filter_importance(self):
-        prep = preprocess(self.fasta_file, self.readout_file)
-
-        # if want mono-nucleotide sequences
-        dict = prep.one_hot_encode()
-
-        # if want dinucleotide sequences
-        # dict = prep.dinucleotide_encode()
-
-        # print maximum length without truncation
-        np.set_printoptions(threshold=sys.maxsize)
-
-        fw_fasta = dict["forward"]
-        rc_fasta = dict["reverse"]
-        readout = dict["readout"]
-
-        seed = random.randint(1,1000)
-
-        x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.1, random_state=seed)
-        # split for reverse complemenet sequences
-        x2_train, x2_test, y2_train, y2_test = train_test_split(rc_fasta, readout, test_size=0.1, random_state=seed)
-        #assert x1_test == x2_test
-        #assert y1_test == y2_test
-
-        model = self.create_model()
-
-        # change from list to numpy array
-        y1_train = np.asarray(y1_train)
-        y1_test = np.asarray(y1_test)
-        y2_train = np.asarray(y2_train)
-        y2_test = np.asarray(y2_test)
-
-        # Copy the original target values for later uses
-        y1_train_orig = y1_train.copy()
-        y1_test_orig = y1_test.copy()
-
-        # if we want to merge two training dataset
-        # comb = np.concatenate((y1_train, y2_train))
-
-        ## Change it to categorical values
-        y1_train = keras.utils.to_categorical(y1_train, 2)
-        y1_test = keras.utils.to_categorical(y1_test, 2)
-
-        # Restore the weights
-        #weight_dir = './data/E13RACtrlF1_E13RAMutF1_DMR_toppos2000/checkpoint/my_checkpoint'
-        weight_dir = '/Users/minjunpark/Documents/MuSeAM/classification/saved_weights/my_checkpoint'
-
-        model.load_weights(weight_dir)
-
-        #######*******************************
-        pred_train = model.predict({'forward': x1_train, 'reverse': x2_train})
-
-        # See which label has the highest confidence value
-        predictions_train = np.argmax(pred_train, axis=1)
-
-        print(y1_train_orig[0:10])
-        print(predictions_train[0:10])
-
-        true_pred = 0
-        false_pred = 0
-        for count, value in enumerate(predictions_train):
-            if y1_train_orig[count] == predictions_train[count]:
-                true_pred += 1
-            else:
-                false_pred += 1
-        print('Total number of train-set predictions is: ' + str(len(y1_train_orig)))
-        print('Number of correct train-set predictions is: ' + str(true_pred))
-        print('Number of incorrect train-set predictions is: ' + str(false_pred))
-
-        # Compute Area Under the Receiver Operating Characteristic Curve (ROC AUC) from prediction scores.
-        # Returns AUC
-        auc_score = sklearn.metrics.roc_auc_score(y1_train_orig, predictions_train)
-        print('train-set auc score is: ' + str(auc_score))
-        print('train-set seed number is: ' + str(seed))
-
-        ##########################################################
-        # Apply on test data
-        pred_test = model.predict({'forward': x1_test, 'reverse': x2_test})
-        # See which label has the highest confidence value
-        predictions_test = np.argmax(pred_test, axis=1)
-
-        true_pred = 0
-        false_pred = 0
-        for count, value in enumerate(predictions_test):
-            if y1_test_orig[count] == predictions_test[count]:
-                true_pred += 1
-            else:
-                false_pred += 1
-        print('Total number of test-set predictions is: ' + str(len(y1_test_orig)))
-        print('Number of correct test-set predictions is: ' + str(true_pred))
-        print('Number of incorrect test-set predictions is: ' + str(false_pred))
-
-        auc_score = sklearn.metrics.roc_auc_score(y1_test_orig, predictions_test)
-        print('test-set auc score is: ' + str(auc_score))
-        print('test-set seed number is: ' + str(seed))
-        sys.exit()
-        #######*******************************
-
-        """
-        model.load_weights(weight_dir)
-        weights = model.get_weights()
-
-        # Apply on test data
-        pred_test = model.predict({'forward': x1_test, 'reverse': x2_test})
-        # Sum the absolute difference between y1_test and pred_test
-        vals = np.sum(np.absolute(np.subtract(y1_test, pred_test)), axis=1)
-        baseline = np.average(vals)
-        """
-        distances = []
-        for i in range(self.filters):
-            model.load_weights(weight_dir)
-            weights = model.get_weights()
-
-            zeros = np.zeros((12,4))
-            weights[0][:,:,i] = zeros
-            model.set_weights(weights)
-
-            ##########################################################
-            # Apply on test data
-            pred_test = model.predict({'forward': x1_test, 'reverse': x2_test})
-            # See which label has the highest confidence value
-            vals = np.sum(np.absolute(np.subtract(y1_test, pred_test)), axis=1)
-            ave_distance = np.average(vals)
-            distances.append(ave_distance)
-            print(i)
-        print(distances)
-        np.savetxt('distances.txt', distances)
-
     def eval(self):
-        prep = preprocess(self.fasta_file, self.readout_file)
-
-        # if want mono-nucleotide sequences
-        dict = prep.one_hot_encode()
-
-        # if want dinucleotide sequences
-        # dict = prep.dinucleotide_encode()
-
-        # print maximum length without truncation
-        np.set_printoptions(threshold=sys.maxsize)
-
-        fw_fasta = dict["forward"]
-        rc_fasta = dict["reverse"]
-        readout = dict["readout"]
-
-        seed = random.randint(1,1000)
-
-        x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.1, random_state=seed)
-        # split for reverse complemenet sequences
-        x2_train, x2_test, y2_train, y2_test = train_test_split(rc_fasta, readout, test_size=0.1, random_state=seed)
-        #assert x1_test == x2_test
-        #assert y1_test == y2_test
-
         model = self.create_model()
 
-        # change from list to numpy array
-        y1_train = np.asarray(y1_train)
-        y1_test = np.asarray(y1_test)
-        y2_train = np.asarray(y2_train)
-        y2_test = np.asarray(y2_test)
+        # Load Train, Test, and Valid data
+        train_seq = np.load('./data/train_seqs.npy')
+        train_readout = np.load('./data/train_readout.npy')
 
-        # Copy the original target values for later uses
-        y1_train_orig = y1_train.copy()
-        y1_test_orig = y1_test.copy()
+        train_fw = train_seq[::2, :, :]
+        train_rc = train_seq[1::2, :, :]
+        train_readout = train_readout[::2, :]
 
-        # if we want to merge two training dataset
-        # comb = np.concatenate((y1_train, y2_train))
+        test_seq = np.load('./data/test_seqs.npy')
+        test_readout = np.load('./data/test_readout.npy')
+        test_fw = test_seq[::2, :, :]
+        test_rc = test_seq[1::2, :, :]
+        test_readout = test_readout[::2, :]
 
-        ## Change it to categorical values
-        y1_train = keras.utils.to_categorical(y1_train, 2)
-        y1_test = keras.utils.to_categorical(y1_test, 2)
+        valid_seq = np.load('./data/valid_seqs.npy')
+        valid_readout = np.load('./data/valid_readout.npy')
+        valid_fw = valid_seq[::2, :, :]
+        valid_rc = valid_seq[1::2, :, :]
+        valid_readout = valid_readout[::2, :]
+
+        print(train_fw.shape)
+        print(train_readout.shape)
+        print(type(train_fw))
+        print(type(train_readout))
 
         # train the data
-        model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
-        ## Save the entire model as a SavedModel.
-        ##model.save('my_model')
-        # Save weights only: later used in self.filter_importance()
-        model.save_weights('./my_checkpoint')
+        #model.fit({'forward': train_fw, 'reverse': train_rc}, train_readout, epochs=self.epochs, batch_size=self.batch_size, validation_split=(({'forward': valid_fw, 'reverse': valid_rc}, valid_readout)))
+        model.fit({'forward': train_fw, 'reverse': train_rc}, train_readout, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
 
-        # save each convolution learned filters as txt file
-        motif_weight = model.get_weights()
-        motif_weight = np.asarray(motif_weight[0])
-        for i in range(int(self.filters)):
-            x = motif_weight[:,:,i]
-            berd = np.divide(np.exp(100*x), np.transpose(np.expand_dims(np.sum(np.exp(100*x), axis = 1), axis = 0), [1,0]))
-            np.savetxt(os.path.join('./motif_files', 'filter_num_%d'%i+'.txt'), berd)
+        predictions = model.predict({'forward': test_fw, 'reverse': test_rc})
+        print(predictions.shape)
+        print(test_readout.shape)
+        np.savetxt('predictions.txt', predictions)
+        np.savetxt('labels.txt', test_readout)
+        # Calculate task-wise Spearman and mean Spearman
 
-        pred_train = model.predict({'forward': x1_train, 'reverse': x2_train})
-
+        """
         # See which label has the highest confidence value
         predictions_train = np.argmax(pred_train, axis=1)
 
@@ -452,63 +283,7 @@ class nn_model:
         auc_score = sklearn.metrics.roc_auc_score(y1_test_orig, predictions_test)
         print('test-set auc score is: ' + str(auc_score))
         print('test-set seed number is: ' + str(seed))
-
-    def hyperopt_tuner(self):
-        def objective(param):
-            prep = preprocess(self.fasta_file, self.readout_file)
-
-            # if want mono-nucleotide sequences
-            dict = prep.one_hot_encode()
-
-            # if want dinucleotide sequences
-            # dict = prep.dinucleotide_encode()
-
-            # print maximum length without truncation
-            np.set_printoptions(threshold=sys.maxsize)
-
-            fw_fasta = dict["forward"]
-            rc_fasta = dict["reverse"]
-            readout = dict["readout"]
-
-            seed = random.randint(1,1000)
-
-            x1_train, x1_test, y1_train, y1_test = train_test_split(fw_fasta, readout, test_size=0.1, random_state=seed)
-            # split for reverse complemenet sequences
-            x2_train, x2_test, y2_train, y2_test = train_test_split(rc_fasta, readout, test_size=0.1, random_state=seed)
-            #assert x1_test == x2_test
-            #assert y1_test == y2_test
-
-            model = self.create_model()
-
-
-            # change from list to numpy array
-            y1_train = np.asarray(y1_train)
-            y1_test = np.asarray(y1_test)
-            y2_train = np.asarray(y2_train)
-            y2_test = np.asarray(y2_test)
-
-            # if we want to merge two training dataset
-            # comb = np.concatenate((y1_train, y2_train))
-
-            # train the data
-            model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.1)
-
-            history2 = model.evaluate({'forward': x1_test, 'reverse': x2_test}, y1_test)
-
-            return history2[0]
-
-        parameter=dict(kernel_size=hp.choice('kernel_size',[12, 16]),
-                       batch_size=hp.choice('batch_size',[512]),
-                       epochs=hp.choice('epochs',[30,40,50]),
-                       filters=hp.choice('filters',[16, 256]))
-
-        # calling the hyperopt function and setting the maximum iteration to 100
-        best_params=fmin(objective,
-                         parameter,
-                         algo=tpe.suggest,
-                         max_evals=5)
-
-        print(best_params)
+        """
 
     def cross_val(self):
         # so that we get different metrics used in this custom version

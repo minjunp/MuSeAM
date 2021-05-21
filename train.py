@@ -1,4 +1,3 @@
-#from model import nn_model
 from main import nn_model
 import time
 import sys
@@ -22,27 +21,21 @@ def train(file_name):
 def main(argv = None):
     if argv is None:
         argv = sys.argv
-
-        #input args
-        fasta_file = argv[1]
         #e.g. sequences.fa
-        readout_file = argv[2]
+        fasta_file = argv[1]
         #e.g. wt_readout.dat
-        parameter_file = argv[3]
+        readout_file = argv[2]
         #e.g. parameter1.txt
+        parameter_file = argv[3]
 
     ## excute the code
     start_time = time.time()
-
     dict = train(parameter_file)
 
-    nn_model(fasta_file, readout_file, filters=dict["filters"], kernel_size=dict["kernel_size"], pool_type=dict["pool_type"], regularizer=dict["regularizer"],
-            activation_type=dict["activation_type"], epochs=dict["epochs"], batch_size=dict["batch_size"])
+    nn_model(fasta_file, readout_file, filters=dict["filters"], kernel_size=dict["kernel_size"],
+            epochs=dict["epochs"], batch_size=dict["batch_size"])
 
-    # reports time consumed during execution (secs)
     print("--- %s seconds ---" % (time.time() - start_time))
 
 if __name__ == "__main__":
     sys.exit(main())
-
-#train('parameter1.txt')

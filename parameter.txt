@@ -1,0 +1,6 @@
+filters 768
+kernel_size 12
+pool_type Max
+regularizer L_1
+epochs 4
+batch_size 512
