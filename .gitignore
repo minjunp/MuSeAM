@@ -8,4 +8,4 @@ data/sharpr/
 data/simulated_data/
 data/simulated_data_old/
 saved_model/
-post-hoc/protein-protein/maxpool_results/
+post-hoc/protein-protein/
