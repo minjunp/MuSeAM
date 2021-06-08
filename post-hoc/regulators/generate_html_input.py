@@ -53,6 +53,16 @@ def process_data(fwd_logos, rc_logos, rankfile, tomtom_dir_path, output_name):
 fwd_logos = '../../saved_model/MuSeAM_regression/motif_files/motif_files/logos/fwd*.png'
 rc_logos = '../../saved_model/MuSeAM_regression/motif_files/motif_files/logos/rc*.png'
 rankfile = 'motif_rank.txt'
-tomtom_dir_path = '../../saved_model/MuSeAM_regression/motif_files/motif_files/tomtom_outputs/result*/tomtom.tsv'
-output_name = 'html_input.txt'
+tomtom_dir_path = '../../saved_model/MuSeAM_regression/motif_files/motif_files/tomtom_overlap_5_outputs/result*/tomtom.tsv'
+output_name = 'html_input_overlap_5.txt'
+
+#tomtom_dir_path = '../../saved_model/MuSeAM_regression/motif_files/motif_files/tomtom_outputs/result*/tomtom.tsv'
+#output_name = 'html_input.txt'
 process_data(fwd_logos, rc_logos, rankfile, tomtom_dir_path, output_name)
+
+# fwd_logos = '../../saved_model/MuSeAM_regression_split/motif_files/motif_files/logos/fwd*.png'
+# rc_logos = '../../saved_model/MuSeAM_regression_split/motif_files/motif_files/logos/rc*.png'
+# rankfile = 'motif_split_rank.txt'
+# tomtom_dir_path = '../../saved_model/MuSeAM_regression_split/motif_files/motif_files/tomtom_outputs/result*/tomtom.tsv'
+# output_name = 'html_input_split.txt'
+# process_data(fwd_logos, rc_logos, rankfile, tomtom_dir_path, output_name)

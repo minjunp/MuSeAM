@@ -15,6 +15,8 @@ def train(file_name):
     dict["kernel_size"] = int(dict["kernel_size"])
     dict["epochs"] = int(dict["epochs"])
     dict["batch_size"] = int(dict["batch_size"])
+    dict["alpha"] = int(dict["alpha"])
+    dict["beta"] = float(dict["beta"])
 
     return dict
 
@@ -33,7 +35,7 @@ def main(argv = None):
     dict = train(parameter_file)
 
     nn_model(fasta_file, readout_file, filters=dict["filters"], kernel_size=dict["kernel_size"],
-            epochs=dict["epochs"], batch_size=dict["batch_size"])
+            epochs=dict["epochs"], batch_size=dict["batch_size"], alpha=dict["alpha"], beta=dict["beta"])
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
