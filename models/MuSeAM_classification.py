@@ -44,22 +44,23 @@ class ConvolutionLayer(Conv1D):
         return outputs
 
 def create_model(self):
-    fw_input = keras.Input(shape=(171,4), name = 'forward')
-    rc_input = keras.Input(shape=(171,4), name = 'reverse')
+    fw_input = keras.Input(shape=(700,4), name = 'forward')
+    rc_input = keras.Input(shape=(700,4), name = 'reverse')
 
     customConv = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', use_bias = True)
     fw = customConv(fw_input)
     rc = customConv(rc_input)
     concat = concatenate([fw, rc], axis=1)
     globalPooling = GlobalMaxPool1D()(concat)
-    fc1 = Dense(32)(globalPooling)
-    outputs = Dense(2, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='sigmoid')(fc1)
+    fc1 = Dense(256)(globalPooling)
+    outputs = Dense(2, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='relu')(fc1)
 
     model = keras.Model(inputs=[fw_input, rc_input], outputs=outputs)
     #keras.utils.plot_model(model, "MuSeAM_classification.png")
     model.summary()
-    model.compile(loss= 'binary_crossentropy',
+    model.compile(#loss= 'binary_crossentropy',
+                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                   optimizer= 'adam',
-                  metrics = [tf.keras.metrics.AUC()])
+                  metrics = ['accuracy'])
 
     return model

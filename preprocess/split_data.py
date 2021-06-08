@@ -35,11 +35,11 @@ def splitData(fasta_file, readout_file, partitionType, taskType = None):
     rc_fasta = dict["reverse"]
     readout = dict["readout"]
 
-    if taskType == 'binary_classification':
-        readout = keras.utils.to_categorical(readout, 2)
+    # if taskType == 'binary_classification':
+    #     readout = keras.utils.to_categorical(readout, 2)
 
-    if taskType == 'multiclass_classification':
-        readout = keras.utils.to_categorical(readout, 3)
+    # if taskType == 'multiclass_classification':
+    #     readout = keras.utils.to_categorical(readout, 3)
 
     if partitionType in ['10Fold', 'fitAll']:
         readout = np.array(readout)
