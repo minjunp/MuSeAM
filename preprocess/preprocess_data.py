@@ -17,6 +17,7 @@ class preprocess():
                 if line[0] == '>':
                     continue
                 else:
+                    line = line.replace("N", "")
                     all_seqs.append(line)
         return all_seqs
 

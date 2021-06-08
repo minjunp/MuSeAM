@@ -5,7 +5,6 @@ import os
 import matplotlib.pyplot as plt
 from scipy import stats
 
-
 font = {'family' : 'Arial',
         #'weight' : 'bold',
         'size'   : 10}
@@ -40,7 +39,9 @@ for idx in range(len(list_lines)):
         motif_entropy_normalized = np.divide(motif_entropy, len(vals))
         hocomoco_entropy.append(motif_entropy_normalized)
 
-dir = '../../saved_model/MuSeAM_regression/motif_original'
+#dir = '../../saved_model/MuSeAM_regression/motif_original'
+dir = '../../saved_model/MuSeAM_regression_split/motif_original'
+
 file_names = []
 for filename in os.listdir(dir):
     name = os.path.join(dir, filename)
@@ -81,5 +82,5 @@ ax.set_xticklabels(['HOCOMOCO motifs', 'MuSeAM motifs'], fontdict=font)
 for element in ['boxes', 'whiskers', 'fliers', 'means', 'medians', 'caps']:
         plt.setp(bp1[element], color='black')
         plt.setp(bp2[element], color='black')
-plt.savefig('ICP.pdf')
-#plt.show()
+
+plt.savefig('ICP_split.pdf')

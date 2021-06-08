@@ -4,3 +4,5 @@ pool_type Max
 regularizer L_1
 epochs 25
 batch_size 57
+alpha 0
+beta 0

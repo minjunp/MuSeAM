@@ -28,7 +28,6 @@ def sharpr(dtype):
         return train_seq, train_readout, fwd_test, readout_test, fwd_valid, readout_valid
 
 def splitData(fasta_file, readout_file, partitionType, taskType = None):
-    print('checkpoint_3')
     prep = preprocess(fasta_file, readout_file)
     dict = prep.one_hot_encode()
 
@@ -38,6 +37,9 @@ def splitData(fasta_file, readout_file, partitionType, taskType = None):
 
     if taskType == 'binary_classification':
         readout = keras.utils.to_categorical(readout, 2)
+
+    if taskType == 'multiclass_classification':
+        readout = keras.utils.to_categorical(readout, 3)
 
     if partitionType in ['10Fold', 'fitAll']:
         readout = np.array(readout)

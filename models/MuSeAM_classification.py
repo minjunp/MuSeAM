@@ -29,7 +29,7 @@ class ConvolutionLayer(Conv1D):
             x_tf = self.kernel  ##x_tf after reshaping is a tensor and not a weight variable :(
             x_tf = tf.transpose(x_tf, [2, 0, 1])
 
-            alpha = 100
+            alpha = 50
             beta = 1/alpha
             bkg = tf.constant([0.295, 0.205, 0.205, 0.295])
             bkg_tf = tf.cast(bkg, tf.float32)
@@ -44,8 +44,8 @@ class ConvolutionLayer(Conv1D):
         return outputs
 
 def create_model(self):
-    fw_input = keras.Input(shape=(150,4), name = 'forward')
-    rc_input = keras.Input(shape=(150,4), name = 'reverse')
+    fw_input = keras.Input(shape=(171,4), name = 'forward')
+    rc_input = keras.Input(shape=(171,4), name = 'reverse')
 
     customConv = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', use_bias = True)
     fw = customConv(fw_input)

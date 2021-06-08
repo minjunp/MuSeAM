@@ -1,9 +1,8 @@
 import tensorflow as tf
 from keras.models import Model
-from tensorflow.keras.layers import Dense, concatenate, GlobalMaxPool1D, Conv1D, ReLU
+from tensorflow.keras.layers import Dense, concatenate, GlobalMaxPool1D, Conv1D
 from tensorflow.keras import backend as K, regularizers
 import keras
-from scipy.stats import spearmanr, pearsonr
 
 class ConvolutionLayer(Conv1D):
     def __init__(self, filters,
@@ -45,42 +44,26 @@ class ConvolutionLayer(Conv1D):
         return outputs
 
 def create_model(self):
-    def coeff_determination(y_true, y_pred):
-        SS_res =  K.sum(K.square( y_true-y_pred ))
-        SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
-        return (1 - SS_res/(SS_tot + K.epsilon()))
-    def spearman_fn(y_true, y_pred):
-        return tf.py_function(spearmanr, [tf.cast(y_pred, tf.float32),
-               tf.cast(y_true, tf.float32)], Tout=tf.float32)
-
-    fw_input = keras.Input(shape=(171,4), name = 'forward')
-    rc_input = keras.Input(shape=(171,4), name = 'reverse')
+    fw_input = keras.Input(shape=(700,4), name = 'forward')
+    rc_input = keras.Input(shape=(700,4), name = 'reverse')
 
     customConv = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', use_bias = True)
     fw = customConv(fw_input)
     rc = customConv(rc_input)
     concat = concatenate([fw, rc], axis=1)
-
-    activation = ReLU()(concat)
-
-    globalPooling = GlobalMaxPool1D()(activation)
-    outputs = Dense(1, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='linear')(globalPooling)
+    globalPooling = GlobalMaxPool1D()(concat)
+    fc1 = Dense(32)(globalPooling)
+    outputs = Dense(3, kernel_initializer='normal', kernel_regularizer=regularizers.l1(0.001), activation='relu')(fc1)
 
     model = keras.Model(inputs=[fw_input, rc_input], outputs=outputs)
-    model2 = keras.Model(inputs=[fw_input, rc_input], outputs=globalPooling)
-    model3 = keras.Model(inputs=[fw_input, rc_input], outputs=activation)
-
+    #keras.utils.plot_model(model, "MuSeAM_classification.png")
     model.summary()
-    #keras.utils.plot_model(model, "MuSeAM_regression.png")
+    # model.compile(loss= 'binary_crossentropy',
+    #               optimizer= 'adam',
+    #               metrics = [tf.keras.metrics.AUC()])
+    model.compile(loss= "mean_squared_error",
+                  optimizer= 'adam',
+                  metrics = [tf.keras.metrics.AUC()],
+                  loss_weights=[930/6460, 572/6460, 4958/6460])
 
-    model.compile(loss= 'mean_squared_error',
-                  optimizer= 'adam',
-                  metrics = [coeff_determination, spearman_fn])
-    model2.compile(loss= 'mean_squared_error',
-                  optimizer= 'adam',
-                  metrics = [coeff_determination, spearman_fn])
-    model3.compile(loss= 'mean_squared_error',
-                  optimizer= 'adam',
-                  metrics = [coeff_determination, spearman_fn])
-
-    return model, model2, model3
+    return model

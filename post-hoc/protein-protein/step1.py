@@ -3,7 +3,7 @@ import re
 import os
 import numpy as np
 
-# Extract coordinate information
+# Extract coordinate information from non-synthetic sequences
 def read_header_into_list(fasta_file, drop_N = True):
     header = []
     cur_seq = ""

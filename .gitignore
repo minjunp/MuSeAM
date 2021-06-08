@@ -4,3 +4,8 @@
 .DS_Store?
 *.DS_Store
 *.pyc
+data/sharpr/
+data/simulated_data/
+data/simulated_data_old/
+saved_model/
+post-hoc/protein-protein/
