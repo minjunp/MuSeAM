@@ -46,6 +46,7 @@ from sklearn.utils import shuffle
 #Reproducibility
 #seed = 7163
 #seed = 413
+seed = 184
 seed = random.randint(1,1000)
 np.random.seed(seed)
 tf.random.set_seed(seed)
@@ -193,41 +194,34 @@ class nn_model:
 
 
     def eval(self):
-        task = 'classification'
-        #task = 'regression'
+        #task = 'classification'
+        task = 'regression'
 
         fwd_train, fwd_test, rc_train, rc_test, readout_train, readout_test = splitData(self.fasta_file,
                                                                                         self.readout_file,
                                                                                         partitionType = 'leaveOneOut')
 
-        model = MuSeAM_classification.create_model(self)
+        #model = MuSeAM_classification.create_model(self)
         #model = MuSeAM_multiclass.create_model(self)
-        #model = MuSeAM_regression.create_model(self)
+        model = MuSeAM_regression.create_model(self)
         #model = MuSeAM_sumPooling.create_model(self)
 
         callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
         model.fit({'forward': fwd_train, 'reverse': rc_train}, readout_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0, callbacks = [callback])
-
-        pred_train = model.predict({'forward': fwd_train, 'reverse': rc_train})
-        pred_test = model.predict({'forward': fwd_test, 'reverse': rc_test})
-
-        pred_train = np.argmax(pred_train, axis=1)
-        pred_test = np.argmax(pred_test, axis=1)
-
-        print(pred_train)
-        print(readout_train)
-
-        print('********************************')
-
-        print(pred_test)
-        print(readout_test)
-
-        #print(readout_test)
-        #print(pred_test)
-        # sys.exit()
         history = model.evaluate({'forward': fwd_test, 'reverse': rc_test}, readout_test)
 
         if task == 'classification':
+            pred_train = model.predict({'forward': fwd_train, 'reverse': rc_train})
+            pred_test = model.predict({'forward': fwd_test, 'reverse': rc_test})
+            pred_train = np.argmax(pred_train, axis=1)
+            pred_test = np.argmax(pred_test, axis=1)
+
+            print(pred_train)
+            print(readout_train)
+            print('********************************')
+            print(pred_test)
+            print(readout_test)
+
             print("Seed number is {}".format(seed))
             trainAUC = sklearn.metrics.roc_auc_score(readout_train, pred_train)
             print('Train-data AUC is ', trainAUC)
@@ -239,8 +233,8 @@ class nn_model:
             print('metric values of model.evaluate: '+ str(history))
             print('metrics names are ' + str(model.metrics_names))
 
-            motif_weight = model.get_weights()
-            dense_weight = motif_weight[2]
+            #motif_weight = model.get_weights()
+            #dense_weight = motif_weight[2]
             #np.savetxt('dense_weights_split.txt', dense_weight)
             #save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_split')
 
