@@ -5,4 +5,4 @@ module load bedtools/2.29.2
 Genome="/mount/samee/Genomes/hg19_ucsc/hg19.fa"
 
 # List of bedtools for getfasta, or list of DMR files for DMR processing
-Blist="top2000.bed bottom2000.bed"
+Blist="all_sequences.bed"
