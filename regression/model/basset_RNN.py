@@ -112,7 +112,8 @@ def create_model(dim_num):
     model.add(tf.keras.layers.BatchNormalization())
     model.add(tf.keras.layers.ReLU())
 
-    
+    #LSTM
+    model.add(LSTM(units = 1000,return_sequences = True))  
 
     #Dense Layer
     model.add(tf.keras.layers.Flatten())
