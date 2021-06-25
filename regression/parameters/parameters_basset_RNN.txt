@@ -4,4 +4,4 @@ loss_func mse
 optimizer adam
 scaling no_scaling
 validation_split 0.0
-model_name basset
+model_name basset_rnn

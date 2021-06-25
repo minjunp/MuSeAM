@@ -13,8 +13,8 @@ import json
 import csv
 import pandas as pd
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score, KFold
-from tensorflow.keras.layers import Dense, LSTM, Dropout, GRU, Bidirectional
 from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Dense, LSTM, Dropout, GRU, Bidirectional
 import tensorflow as tf
 from scipy.stats import spearmanr, pearsonr
 import matplotlib.pyplot as plt
@@ -26,6 +26,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 sys.path.append('../preprocessing/')
 from data_preprocess import preprocess
+
 ######################################################################################################
 ######################################################################################################
 ######################################################################################################
@@ -48,6 +49,8 @@ def train(file_name):
            dict[key] = val
 
     # change string values to integer values
+    dict["filters"] = int(dict["filters"])
+    dict["kernel_size"] = int(dict["kernel_size"])
     dict["epochs"] = int(dict["epochs"])
     dict["batch_size"] = int(dict["batch_size"])
     dict["validation_split"] = float(dict["validation_split"])    
@@ -87,40 +90,25 @@ def create_model(dim_num):
     
     #deepsea arquitecture
     model = tf.keras.Sequential()
-
     #First Conv1D
-    model.add(tf.keras.layers.Conv1D(filters=300, 
-                 kernel_size=19, 
+    model.add(tf.keras.layers.Conv1D(filters=320, 
+                 kernel_size=8, 
                  input_shape=(dim_num[1],dim_num[2])))
-    
-    model.add(tf.keras.layers.BatchNormalization())
-    model.add(tf.keras.layers.ReLU())
-    model.add(tf.keras.layers.MaxPooling1D(pool_size=3))
 
-    ## model.add(tf.keras.layers.Dropout(rate=0.20))
-    
+    model.add(tf.keras.layers.MaxPooling1D(pool_size=4,strides=4))
+    model.add(tf.keras.layers.Dropout(rate=0.20))
     #Second Conv1D
-    model.add(tf.keras.layers.Conv1D(filters=200, 
-                 kernel_size=11))
-    model.add(tf.keras.layers.BatchNormalization())
-    model.add(tf.keras.layers.ReLU())
-    model.add(tf.keras.layers.MaxPooling1D(pool_size=4))
-    
+    model.add(tf.keras.layers.Conv1D(filters=480, 
+                 kernel_size=8))
+    model.add(tf.keras.layers.MaxPooling1D(pool_size=4,strides=4))
+    model.add(tf.keras.layers.Dropout(rate=0.20))
     #Third Conv1D
-    model.add(tf.keras.layers.Conv1D(filters=200, 
-                 kernel_size=7))
-    model.add(tf.keras.layers.BatchNormalization())
-    model.add(tf.keras.layers.ReLU())
-
-    #LSTM
-    model.add(LSTM(units = 1000,return_sequences = True))  
-
+    model.add(tf.keras.layers.Conv1D(filters=960, 
+                 kernel_size=8))
+    model.add(tf.keras.layers.Dropout(rate=0.50))
     #Dense Layer
     model.add(tf.keras.layers.Flatten())
-    model.add(tf.keras.layers.Dense(1000, activation='relu'))
-    model.add(tf.keras.layers.Dropout(rate=0.30))
-    model.add(tf.keras.layers.Dense(164, activation='relu'))
-
+    model.add(tf.keras.layers.Dense(925, activation='relu'))
     #Output Layer
     model.add(tf.keras.layers.Dense(1, activation='linear'))
 
@@ -134,8 +122,6 @@ def create_model(dim_num):
 
 
 def cros_eval(parameters,fasta_file,readout_file):
-    
-    model_name = parameters['model_name']
     # Preprocess the data
     prep = preprocess(f'../data/{fasta_file}', f'../data/{readout_file}')
     dict = prep.one_hot_encode()
@@ -181,7 +167,7 @@ def cros_eval(parameters,fasta_file,readout_file):
     pred_vals = pd.DataFrame()
 
     Fold=0
-    
+    model_name = parameters['model_name']
 
     for train, test in kFold.split(ln, ln):
         model = None
@@ -203,19 +189,19 @@ def cros_eval(parameters,fasta_file,readout_file):
         metrics.append(history2)
         pred = np.reshape(pred,len(pred))
 
-        temp  = pd.DataFrame({'sequence_names':np.array(names_test).flatten(),
+        temp = pd.DataFrame({'sequence_names':np.array(names_test).flatten(),
                                      'true_vals':np.array(y_test).flatten(),
                                      'pred_vals':np.array(pred).flatten()})
         temp['Fold'] = Fold
 
         Fold=Fold+1
-        
-        #append to main dataframe
+
         pred_vals = pred_vals.append(temp,ignore_index=True)
+
     
     pred_vals.to_csv(f'../outs/metrics/{model_name}.csv')
 
-    print('[INFO] Calculating 10cFold CV metrics') 
+    print('[INFO] Calculating 10Fold CV metrics')   
     g1 = []
     g2 = []
     g3 = []
@@ -235,7 +221,7 @@ def cros_eval(parameters,fasta_file,readout_file):
     metrics_dataframe = pd.DataFrame({"mean_loss":[np.mean(g1)],
                                           "R_2":[np.mean(g2)],
                                           "Spearman":[np.mean(g3)]})
-#
+
 
     metrics_dataframe.to_csv(f'../outs/metrics/{model_name}_CV_metrics.csv')
 
@@ -245,6 +231,7 @@ def cros_eval(parameters,fasta_file,readout_file):
 ######################################################################################################
 ######################################################################################################
 # RUN SCRIPT
+
 run_model()
 
-#nohup python basset.py sequences.fa wt_readout.dat parameters_basset.txt > outs/basset.out &
+#nohup python deepsea.py sequences.fa wt_readout.dat parameters_deepsea.txt > outs/deepsea.out &
