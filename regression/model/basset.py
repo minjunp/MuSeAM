@@ -17,12 +17,14 @@ from tensorflow.keras import backend as K
 import tensorflow as tf
 from scipy.stats import spearmanr, pearsonr
 import matplotlib.pyplot as plt
-from data_preprocess import preprocess
 from sklearn.utils import shuffle
 import random
 from sklearn.preprocessing import MinMaxScaler
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
+
+sys.path.append('../preprocessing/')
+from data_preprocess import preprocess
 ######################################################################################################
 ######################################################################################################
 ######################################################################################################
@@ -45,8 +47,6 @@ def train(file_name):
            dict[key] = val
 
     # change string values to integer values
-    dict["filters"] = int(dict["filters"])
-    dict["kernel_size"] = int(dict["kernel_size"])
     dict["epochs"] = int(dict["epochs"])
     dict["batch_size"] = int(dict["batch_size"])
     dict["validation_split"] = float(dict["validation_split"])    
@@ -131,7 +131,7 @@ def create_model(dim_num):
 
 def cros_eval(parameters,fasta_file,readout_file):
     # Preprocess the data
-    prep = preprocess(fasta_file, readout_file)
+    prep = preprocess(f'../data/{fasta_file}', f'../data/{readout_file}')
     dict = prep.one_hot_encode()
     
     fw_fasta = dict["forward"]
@@ -207,7 +207,7 @@ def cros_eval(parameters,fasta_file,readout_file):
         pred_vals = pred_vals.append(temp,ignore_index=True)
 
     
-    pred_vals.to_csv(f'./outs/{model_name}.csv')
+    pred_vals.to_csv(f'../outs/metrics/{model_name}.csv')
 
     print('[INFO] Calculating 10Fold CV metrics')   
     g1 = []
@@ -231,7 +231,7 @@ def cros_eval(parameters,fasta_file,readout_file):
                                           "Spearman":[np.mean(g3)]})
 
 
-    metrics_dataframe.to_csv(f'./outs/{model_name}_CV_metrics.csv')
+    metrics_dataframe.to_csv(f'../outs/metrics/{model_name}_CV_metrics.csv')
 
 
 

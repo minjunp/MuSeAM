@@ -49,8 +49,6 @@ def train(file_name):
            dict[key] = val
 
     # change string values to integer values
-    dict["filters"] = int(dict["filters"])
-    dict["kernel_size"] = int(dict["kernel_size"])
     dict["epochs"] = int(dict["epochs"])
     dict["batch_size"] = int(dict["batch_size"])
     dict["validation_split"] = float(dict["validation_split"])    
@@ -234,4 +232,4 @@ def cros_eval(parameters,fasta_file,readout_file):
 
 run_model()
 
-#nohup python deepsea.py sequences.fa wt_readout.dat parameters_deepsea.txt > outs/deepsea.out &
+#nohup python deepsea_RNN.py sequences.fa wt_readout.dat ../parameters/parameters_deepsea_RNN.txt > ../outs/logs/deepsea_rnn.out &
