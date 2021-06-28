@@ -102,6 +102,7 @@ def create_model(dim_num):
     model.add(tf.keras.layers.Conv1D(filters=960, 
                  kernel_size=8))
     model.add(tf.keras.layers.Dropout(rate=0.50))
+
     #Dense Layer
     model.add(tf.keras.layers.Flatten())
     model.add(tf.keras.layers.Dense(925, activation='relu'))
@@ -131,7 +132,8 @@ def cros_eval(parameters,fasta_file,readout_file):
     dim_num = fw_fasta.shape
 
 
-    readout = np.log2(readout)
+    #readout = np.log2(readout)
+    readout = np.array(readout)
     if parameters['scaling'] == 'no_scaling':
         readout = np.ndarray.tolist(readout)
     elif parameters['scaling'] == "0_1":

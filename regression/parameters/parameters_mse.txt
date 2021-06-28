@@ -8,4 +8,5 @@ batch_size 59
 loss_func mse
 optimizer adam
 scaling 0_1
+validation_split 0.0
 model_name mse_0_1
