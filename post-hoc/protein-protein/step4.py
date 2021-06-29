@@ -43,7 +43,10 @@ def co_occur_pair(file_name='binom_cooccur.txt'):
             continue
         tomtom_match_b = tomtom_b[0:tomtom_b.find('_')]
 
-        zipped_pair = (tomtom_match_a, tomtom_match_b)
+        #zipped_pair = (tomtom_match_a, tomtom_match_b)
+        # get motif number instead
+        zipped_pair = (pair_a_num, pair_b_num)
+
         zipped_pair = sorted(zipped_pair) # sort for the same pair with different order
 
         pairs_combine.append(zipped_pair)

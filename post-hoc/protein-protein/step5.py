@@ -46,9 +46,13 @@ print(f'Total search number is {len(sig_pairs)}')
 print(f'Total number of co-occurring pairs is {count}')
 print(f'Proportion of co-occurring pairs is {count/len(sig_pairs)}')
 
-with open('pairs_with_hindrance_evalue_5_v2.txt', 'w') as file:
-    for i in pairs:
+with open('all_pairs_with_hindrance_evalue_5_motifs.txt', 'w') as file:
+    for i in sig_pairs:
         file.write(f'{i[0]}\t{i[1]}\n')
+
+# with open('pairs_with_hindrance_evalue_5_v2.txt', 'w') as file:
+#     for i in pairs:
+#         file.write(f'{i[0]}\t{i[1]}\n')
 
 # Total search number is 608
 # Total number of co-occurring pairs is 27
