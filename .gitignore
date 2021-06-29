@@ -7,5 +7,7 @@
 data/sharpr/
 data/simulated_data/
 data/simulated_data_old/
-saved_model/
+saved_model/MuSeAM_regression
+saved_model/MuSeAM_regression_split
+saved_model/MuSeAM_regression_synthetic_removed
 post-hoc/protein-protein/
