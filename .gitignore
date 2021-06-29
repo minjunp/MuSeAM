@@ -11,3 +11,5 @@ saved_model/MuSeAM_regression
 saved_model/MuSeAM_regression_split
 saved_model/MuSeAM_regression_synthetic_removed
 post-hoc/protein-protein/
+saved_model/
+post-hoc/regulators/tomtom/
