@@ -4,7 +4,8 @@ import keras
 import numpy as np
 
 #reconstructed_model = keras.models.load_model("../../saved_model/MuSeAM_regression/regression_model", compile=False)
-reconstructed_model = keras.models.load_model("../../saved_model/MuSeAM_regression_split/regression_model", compile=False)
+reconstructed_model = keras.models.load_model("/Users/minjunp/Documents/baylor/MuSeAM/saved_model/MuSeAM_regression_silencer/silencer_model", compile=False)
+sys.exit()
 model_weights = reconstructed_model.get_weights()
 
 dense_weight = model_weights[2]
@@ -30,6 +31,6 @@ print(repressor_indices)
 # [359  75 411 210 276 347  73 231 361 241]
 # [274 372  55 170  63  67 265 173 236 301]
 
-np.savetxt('motif_split_rank.txt', dense_weight_sorted)
+np.savetxt('motif_silencer_rank.txt', dense_weight_sorted)
 #np.savetxt('dense_weights.txt', dense_weight)
 #np.savetxt('dense_bias.txt', dense_bias)

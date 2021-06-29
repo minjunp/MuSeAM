@@ -46,7 +46,7 @@ def splitData(fasta_file, readout_file, partitionType, taskType = None):
         return fwd_fasta, rc_fasta, readout
 
     if partitionType == 'leaveOneOut':
-        fwd_train, fwd_test, rc_train, rc_test, readout_train, readout_test = train_test_split(fwd_fasta, rc_fasta, readout, test_size=0.1, shuffle=True)
+        fwd_train, fwd_test, rc_train, rc_test, readout_train, readout_test = train_test_split(fwd_fasta, rc_fasta, readout, test_size=0.2, shuffle=True)
 
         readout_train = np.array(readout_train)
         readout_test = np.array(readout_test)

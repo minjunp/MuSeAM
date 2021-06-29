@@ -10,8 +10,7 @@ import models.MuSeAM_regression_pooling_layer as MuSeAM_regression_pooling_layer
 import models.MuSeAM_sumPooling as MuSeAM_sumPooling
 import models.MuSeAM_alpha as MuSeAM_alpha
 import models.MuSeAM_multiclass as MuSeAM_multiclass
-
-#from saved_model import save_model
+from saved_model import save_model
 
 from preprocess.split_data import splitData, sharpr
 import numpy as np
@@ -44,9 +43,7 @@ from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val
 from sklearn.utils import shuffle
 
 #Reproducibility
-#seed = 7163
-#seed = 413
-seed = 184
+#seed = 7163, 413, 184
 seed = random.randint(1,1000)
 np.random.seed(seed)
 tf.random.set_seed(seed)
@@ -236,7 +233,7 @@ class nn_model:
             #motif_weight = model.get_weights()
             #dense_weight = motif_weight[2]
             #np.savetxt('dense_weights_split.txt', dense_weight)
-            #save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_split')
+            save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_silencer')
 
     def fitAll(self):
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,
@@ -250,14 +247,12 @@ class nn_model:
         save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_synthetic_removed')
 
     def cross_val(self):
-        task = 'classification'
-        #task = 'regression'
+        #task = 'classification'
+        task = 'regression'
 
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,
                                                 self.readout_file,
-                                                partitionType = '10Fold',
-                                                taskType = 'binary_classification')
-
+                                                partitionType = '10Fold')
         # initialize metrics to save values
         trainAUCs = []
         testAUCs = []
@@ -291,8 +286,9 @@ class nn_model:
                 testAUCs.append(testAUC)
             if task == 'regression':
                 model = None
-                #model = MuSeAM_sumPooling.create_model(self)
-                model = MuSeAM_alpha.create_model(self)
+                # model = MuSeAM_sumPooling.create_model(self)
+                # model = MuSeAM_alpha.create_model(self)
+                model = MuSeAM_regression.create_model(self)
 
                 # Early stopping
                 #callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
