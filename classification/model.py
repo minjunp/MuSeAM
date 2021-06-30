@@ -33,6 +33,8 @@ from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import Lambda
 from tensorflow import keras
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import LSTM
 
 import sklearn
 from sklearn.preprocessing import StandardScaler
@@ -111,8 +113,8 @@ class nn_model:
         self.fasta_file = fasta_file
         self.readout_file = readout_file
 
-        #self.eval_deepsea()
-        self.eval_basset()
+        self.eval_deepsea()
+        #self.eval_basset()
         #self.eval()
         #self.filter_importance()
         #self.cross_val()
@@ -161,6 +163,8 @@ class nn_model:
                      kernel_size=8))
         model.add(tf.keras.layers.Dropout(rate=0.50))
         #Dense Layer
+        model.add(LSTM(units = 1000,return_sequences = True))
+
         model.add(tf.keras.layers.Flatten())
         model.add(tf.keras.layers.Dense(925, activation='relu'))
         #Output Layer
@@ -222,6 +226,8 @@ class nn_model:
                      kernel_size=7))
         model.add(tf.keras.layers.BatchNormalization())
         model.add(tf.keras.layers.ReLU())
+
+        model.add(LSTM(units = 1000,return_sequences = True))
 
         #Dense Layer
         model.add(tf.keras.layers.Flatten())
@@ -587,7 +593,7 @@ class nn_model:
         # train the data
         history = model.fit(x1_train, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_data=(x1_valid, y1_valid))
 
-        save_plot = 'true'
+        save_plot = 'false'
         if save_plot == 'true':
             plt.plot(history.history['accuracy'])
             plt.plot(history.history['val_accuracy'])
@@ -617,7 +623,7 @@ class nn_model:
             berd = np.divide(np.exp(100*x), np.transpose(np.expand_dims(np.sum(np.exp(100*x), axis = 1), axis = 0), [1,0]))
             np.savetxt(os.path.join('./motif_files', 'filter_num_%d'%i+'.txt'), berd)
         """
-        sys.exit()
+
         pred_train = model.predict(x1_train)
 
         # See which label has the highest confidence value
