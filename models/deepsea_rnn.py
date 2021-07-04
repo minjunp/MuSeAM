@@ -5,6 +5,7 @@ from keras.layers import Input, Dense, Conv1D, MaxPooling2D, Dropout, Flatten, B
 import keras
 from tensorflow.keras import backend as K, regularizers
 from scipy.stats import spearmanr, pearsonr
+from tensorflow.keras.layers import LSTM
 
 def create_model(self):
         def coeff_determination(y_true, y_pred):
@@ -27,6 +28,8 @@ def create_model(self):
 
         model.add(Conv1D(filters=960, kernel_size=8))
         model.add(Dropout(rate=0.50))
+
+        model.add(LSTM(units = 1000,return_sequences = True))
 
         model.add(Flatten())
         model.add(Dense(925, activation='relu'))

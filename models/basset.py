@@ -3,12 +3,22 @@ import tensorflow as tf
 from keras.models import Model
 from keras.layers import Input, Dense, Conv1D, MaxPooling2D, Dropout, Flatten, BatchNormalization, MaxPooling1D
 import keras
+from tensorflow.keras import backend as K, regularizers
+from scipy.stats import spearmanr, pearsonr
 
 def create_model(self):
+        def coeff_determination(y_true, y_pred):
+            SS_res =  K.sum(K.square( y_true-y_pred ))
+            SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
+            return (1 - SS_res/(SS_tot + K.epsilon()))
+        def spearman_fn(y_true, y_pred):
+            return tf.py_function(spearmanr, [tf.cast(y_pred, tf.float32),
+                   tf.cast(y_true, tf.float32)], Tout=tf.float32)
+
         model = model = Sequential()
 
         #First Conv1D
-        model.add(Conv1D(filters=300, kernel_size=19, input_shape=(151,4)))
+        model.add(Conv1D(filters=300, kernel_size=19, input_shape=(200,4)))
 
         model.add(BatchNormalization())
         model.add(ReLU())
@@ -32,5 +42,6 @@ def create_model(self):
 
         model.compile(
             loss= "mean_squared_error",
-            optimizer='adam')
+            optimizer='adam',
+            metrics = [coeff_determination, spearman_fn])
         return model
