@@ -11,6 +11,10 @@ import models.MuSeAM_sumPooling as MuSeAM_sumPooling
 import models.MuSeAM_alpha as MuSeAM_alpha
 import models.MuSeAM_multiclass as MuSeAM_multiclass
 from saved_model import save_model
+import models.deepsea as deepsea_model
+import models.deepsea_rnn as deepsea_rnn_model
+import models.basset as basset_model
+import models.basset_rnn as basset_rnn_model
 
 from preprocess.split_data import splitData, sharpr
 import numpy as np
@@ -44,7 +48,8 @@ from sklearn.utils import shuffle
 
 #Reproducibility
 #seed = 7163, 413, 184
-seed = random.randint(1,1000)
+seed = random.randint(1,100000)
+seed = 246
 np.random.seed(seed)
 tf.random.set_seed(seed)
 
@@ -60,13 +65,13 @@ class nn_model:
         self.alpha = alpha
         self.beta = beta
 
-        self.eval()
+        #self.eval()
         #self.cross_val()
         #self.eval_sharpr()
         #self.load_weights()
         #self.fitAll()
         #self.pooling_layer()
-        #self.relu_layer()
+        self.relu_layer()
         #self.pooling_coordinate()
 
     def eval_sharpr(self):
@@ -233,7 +238,7 @@ class nn_model:
             #motif_weight = model.get_weights()
             #dense_weight = motif_weight[2]
             #np.savetxt('dense_weights_split.txt', dense_weight)
-            save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_silencer')
+            save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_silencer_256')
 
     def fitAll(self):
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,
@@ -288,12 +293,17 @@ class nn_model:
                 model = None
                 # model = MuSeAM_sumPooling.create_model(self)
                 # model = MuSeAM_alpha.create_model(self)
-                model = MuSeAM_regression.create_model(self)
+                # model = MuSeAM_regression.create_model(self)
+                # model = deepsea_model.create_model(self)
+                model = deepsea_rnn_model.create_model(self)
+
+                model.fit(fwdTrain, readoutTrain, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
+                history = model.evaluate(fwdTest, readoutTest)
 
                 # Early stopping
                 #callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
-                model.fit({'forward': fwdTrain, 'reverse': rcTrain}, readoutTrain, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
-                history = model.evaluate({'forward': fwdTest, 'reverse': rcTest}, readoutTest)
+                # model.fit({'forward': fwdTrain, 'reverse': rcTrain}, readoutTrain, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
+                # history = model.evaluate({'forward': fwdTest, 'reverse': rcTest}, readoutTest)
                 histories.append(history)
 
         print(f'Seed number is {seed}')
@@ -313,15 +323,18 @@ class nn_model:
                 g1.append(loss)
                 g2.append(r_2)
                 g3.append(spearman_val)
+
             print('Mean loss of 10-fold cv is ' + str(np.mean(g1)))
+            print(g2)
             print('Mean R_2 score of 10-fold cv is ' + str(np.mean(g2)))
+            print(g3)
             print('Mean Spearman of 10-fold cv is ' + str(np.mean(g3)))
 
     def pooling_layer(self):
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,
                                                 self.readout_file,
                                                 'fitAll')
-        model, model2 = MuSeAM_regression_pooling_layer.create_model(self)
+        model, model2, model3 = MuSeAM_regression_pooling_layer.create_model(self)
         model.fit({'forward': fwd_fasta, 'reverse': rc_fasta}, readout, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
         pooling_output = model2.predict({'forward': fwd_fasta, 'reverse': rc_fasta})
         np.savetxt('./post-hoc/protein-protein/pooling_output.txt', pooling_output)
@@ -341,7 +354,7 @@ class nn_model:
 
         relu_output = model3.predict({'forward': fwd_fasta, 'reverse': rc_fasta})
         print(relu_output.shape)
-        np.save('./post-hoc/protein-protein/relu_split_output', relu_output)
+        np.save('./post-hoc/protein-protein', relu_output)
 
     def pooling_coordinate(self):
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,
