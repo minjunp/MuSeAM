@@ -16,8 +16,6 @@ null_prob = (420+(135*24))/160/160 # 0.143
 
 # generate every pairs without duplicates
 list_of_pairs = list(itertools.combinations(range(512), 2))
-# print(list_of_pairs)
-
 relu_output = np.load('./all_data/relu_output.npy')
 #relu_output = np.load('relu_split_output.npy')
 # print(relu_output.shape) # (2236, 320, 512)
@@ -55,9 +53,11 @@ for i in range(len(list_of_pairs)):
             # Loop over if there is occurrence
             for ind_a in filter_a_nonzero_index[0]:
                 for ind_b in filter_b_nonzero_index[0]:
-                    range_a = range(int(ind_a)-12, int(ind_a)+12)
-                    if (ind_a != ind_b) and (ind_b in range_a): ## with hindrance
-                    #if ind_b in range_a: ## without hindrance
+                    # range_a = range(int(ind_a)-12, int(ind_a)+12)
+                    range_a_left = range(int(ind_a)-23, int(ind_a)-12)
+                    range_a_right = range(int(ind_a)+12, int(ind_a)+23)
+
+                    if (ind_b in range_a_left) or (ind_b in range_a_right):
                         n_cooccur += 1
                         break
                     else:

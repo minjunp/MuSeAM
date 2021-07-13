@@ -39,8 +39,7 @@ for idx in range(len(list_lines)):
         motif_entropy_normalized = np.divide(motif_entropy, len(vals))
         hocomoco_entropy.append(motif_entropy_normalized)
 
-#dir = '../../saved_model/MuSeAM_regression/motif_original'
-dir = '../../saved_model/MuSeAM_regression_split/motif_original'
+dir = '/Users/minjunp/Documents/baylor/MuSeAM/saved_model/MuSeAM_regression_silencer/motif_original'
 
 file_names = []
 for filename in os.listdir(dir):
@@ -83,4 +82,4 @@ for element in ['boxes', 'whiskers', 'fliers', 'means', 'medians', 'caps']:
         plt.setp(bp1[element], color='black')
         plt.setp(bp2[element], color='black')
 
-plt.savefig('ICP_split.pdf')
+plt.savefig('ICP_silencer.pdf')

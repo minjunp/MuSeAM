@@ -6,7 +6,7 @@ from glob import glob
 hepg2_file = pd.read_csv('HepG2.Genc.gene_name', sep=' ', header=None)
 hepg2_expressed_tfs = hepg2_file[2].str.upper().tolist()
 
-tomtom_dir_path = '../tomtom_outputs_evalue_5_v2/result*/tomtom.tsv'
+tomtom_dir_path = '../tomtom_outputs_evalue_10/result*/tomtom.tsv'
 tomtom_dir = sorted(glob(tomtom_dir_path))
 
 tomtoms = []

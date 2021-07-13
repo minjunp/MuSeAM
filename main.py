@@ -66,12 +66,12 @@ class nn_model:
         self.beta = beta
 
         #self.eval()
-        #self.cross_val()
+        self.cross_val()
         #self.eval_sharpr()
         #self.load_weights()
         #self.fitAll()
         #self.pooling_layer()
-        self.relu_layer()
+        #self.relu_layer()
         #self.pooling_coordinate()
 
     def eval_sharpr(self):
@@ -235,10 +235,10 @@ class nn_model:
             print('metric values of model.evaluate: '+ str(history))
             print('metrics names are ' + str(model.metrics_names))
 
-            #motif_weight = model.get_weights()
-            #dense_weight = motif_weight[2]
-            #np.savetxt('dense_weights_split.txt', dense_weight)
-            save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_silencer_256')
+            motif_weight = model.get_weights()
+            dense_weight = motif_weight[2]
+            np.savetxt('dense_weights_silencer.txt', dense_weight)
+            #save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_silencer_256')
 
     def fitAll(self):
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,
@@ -293,17 +293,17 @@ class nn_model:
                 model = None
                 # model = MuSeAM_sumPooling.create_model(self)
                 # model = MuSeAM_alpha.create_model(self)
-                # model = MuSeAM_regression.create_model(self)
+                model = MuSeAM_regression.create_model(self)
                 # model = deepsea_model.create_model(self)
-                model = deepsea_rnn_model.create_model(self)
+                # model = deepsea_rnn_model.create_model(self)
 
-                model.fit(fwdTrain, readoutTrain, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
-                history = model.evaluate(fwdTest, readoutTest)
+                # model.fit(fwdTrain, readoutTrain, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
+                # history = model.evaluate(fwdTest, readoutTest)
 
                 # Early stopping
                 #callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
-                # model.fit({'forward': fwdTrain, 'reverse': rcTrain}, readoutTrain, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
-                # history = model.evaluate({'forward': fwdTest, 'reverse': rcTest}, readoutTest)
+                model.fit({'forward': fwdTrain, 'reverse': rcTrain}, readoutTrain, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
+                history = model.evaluate({'forward': fwdTest, 'reverse': rcTest}, readoutTest)
                 histories.append(history)
 
         print(f'Seed number is {seed}')
