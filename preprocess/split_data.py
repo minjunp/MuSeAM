@@ -3,6 +3,7 @@ from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val
 import numpy as np
 import keras
 import sys
+from sklearn.utils import shuffle
 
 def sharpr(dtype):
     # Load Train, Test, and Valid data
@@ -43,6 +44,7 @@ def splitData(fasta_file, readout_file, partitionType, taskType = None):
 
     if partitionType in ['10Fold', 'fitAll']:
         readout = np.array(readout)
+        fwd_fasta, rc_fasta, readout = shuffle(fwd_fasta, rc_fasta, readout, random_state=0)
         return fwd_fasta, rc_fasta, readout
 
     if partitionType == 'leaveOneOut':
