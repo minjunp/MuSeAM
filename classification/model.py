@@ -11,6 +11,8 @@ import random
 import scipy
 import matplotlib.pyplot as plt
 
+from saved_model import save_model
+
 from data_preprocess import preprocess
 from scipy.stats import spearmanr, pearsonr
 
@@ -113,9 +115,9 @@ class nn_model:
         self.fasta_file = fasta_file
         self.readout_file = readout_file
 
-        self.eval_deepsea()
+        #self.eval_deepsea()
         #self.eval_basset()
-        #self.eval()
+        self.eval()
         #self.filter_importance()
         #self.cross_val()
         #self.train_entire()
@@ -880,7 +882,10 @@ class nn_model:
         # train the data
         history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_data=({'forward': x1_valid, 'reverse': x2_valid}, y1_valid))
         ## Save weights
-        model.save_weights('./saved_model/museam_shuffled')
+        # model.save_weights('./saved_model/museam_shuffled')
+        motif_weight = model.get_weights()
+        dense_weight = motif_weight[2]
+        np.savetxt('dense_weights_dnase.txt', dense_weight)
         ## 12 epochs for shuffled seq
         ## 17 epochs for null seq
 
