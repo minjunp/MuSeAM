@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import scipy.stats as stats
 import itertools
 from glob import glob
+import keras
 
 maxpool_seq_length = 185
 count = 0
@@ -16,16 +17,28 @@ null_prob = (420+(135*24))/maxpool_seq_length/maxpool_seq_length # 0.143
 
 # generate every pairs without duplicates
 list_of_pairs = list(itertools.combinations(range(512), 2))
-<<<<<<< HEAD
-# print(list_of_pairs)
 
+##### Get relu outputs ######
 relu_output = np.load('./all_data/silencer_protein.npy') #(7232, 370, 512)
-#relu_output = np.load('./all_data/relu_output.npy') #(2236, 320, 512)
-=======
-relu_output = np.load('./all_data/relu_output.npy')
-#relu_output = np.load('relu_split_output.npy')
+# relu_output = np.load('./all_data/relu_output.npy')
+print(relu_output.shape)
+reconstructed_model = keras.models.load_model("../../saved_model/MuSeAM_dnase/dnase_model", compile=False)
+print(reconstructed_model)
+print(len(reconstructed_model))
+sys.exit()
+
+model_weights = reconstructed_model.get_weights()
+print(model_weights[1].shape)
+print(model_weights[2].shape)
+print(model_weights[3].shape)
+print(model_weights[4].shape)
+print(len(model_weights))
+sys.exit()
+dense_weight = model_weights[2]
+dense_bias = model_weights[3]
+##############################
+
 # print(relu_output.shape) # (2236, 320, 512)
->>>>>>> 8788404d135f61247962244f0df8a228f6cd590f
 
 pvals = []
 for i in range(len(list_of_pairs)):
