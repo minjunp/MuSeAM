@@ -4,7 +4,7 @@ import keras
 import numpy as np
 
 """
-#reconstructed_model = keras.models.load_model("../../saved_model/MuSeAM_regression/regression_model", compile=False)
+reconstructed_model = keras.models.load_model("../../saved_model/MuSeAM_regression/regression_model", compile=False)
 model_weights = reconstructed_model.get_weights()
 
 dense_weight = model_weights[2]
