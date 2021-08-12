@@ -44,7 +44,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import r2_score
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score, KFold
 from sklearn.utils import shuffle
-
 #Reproducibility
 #seed = random.randint(1,1000)
 seed = 601
@@ -285,6 +284,7 @@ class nn_model:
         bw = first_layer(reverse)
 
         concat = concatenate([fw, bw], axis=1)
+        # concat = Dense(1)(concat1)
 
         pool_size_input = concat.shape[1]
 
@@ -343,15 +343,17 @@ class nn_model:
         #weight_forwardin_0=model.layers[0].get_weights()[0]
         #print(weight_forwardin_0)
         model = keras.Model(inputs=[forward, reverse], outputs=outputs)
+        model2 = keras.Model(inputs=[forward,reverse], outputs=concat)
 
         #print model summary
         model.summary()
 
         #model.compile(loss='mean_squared_error', optimizer='adam', metrics = ['accuracy'])
         model.compile(loss='binary_crossentropy', optimizer='adam', metrics = ['accuracy'])
+        model2.compile(loss='binary_crossentropy', optimizer='adam', metrics = ['accuracy'])
         #model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy', auroc])
 
-        return model
+        return model, model2
 
     def loadWeight(self):
         prep = preprocess(self.fasta_file, self.readout_file)
@@ -860,7 +862,7 @@ class nn_model:
         #assert x1_test == x2_test
         #assert y1_test == y2_test
 
-        model = self.create_model()
+        model, model2 = self.create_model()
 
         # change from list to numpy array
         y1_train = np.asarray(y1_train)
@@ -882,6 +884,10 @@ class nn_model:
         # train the data
         history = model.fit({'forward': x1_train, 'reverse': x2_train}, y1_train, epochs=self.epochs, batch_size=self.batch_size, validation_data=({'forward': x1_valid, 'reverse': x2_valid}, y1_valid))
         ## Save weights
+        concat_output = model2.predict({'forward': x1_train, 'reverse': x2_train})
+        print(concat_output.shape)
+        np.save('./dnase_protein', concat_output)
+        sys.exit()
         # model.save_weights('./saved_model/museam_shuffled')
         motif_weight = model.get_weights()
         dense_weight = motif_weight[2]
