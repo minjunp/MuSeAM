@@ -65,13 +65,10 @@ class nn_model:
         self.alpha = alpha
         self.beta = beta
 
-<<<<<<< HEAD
-        self.eval()
+        #self.eval()
         #self.cross_val()
-=======
         #self.eval()
         self.cross_val()
->>>>>>> 8788404d135f61247962244f0df8a228f6cd590f
         #self.eval_sharpr()
         #self.load_weights()
         #self.fitAll()
