@@ -7,12 +7,11 @@ import sys
 df = pd.read_csv('BIOGRID-ALL-3.5.186.tab2.txt', sep="\t", header=0)
 df = df[df.columns[2:6]]
 
-#sig_pairs = co_occur_pair(file_name='./all_data/binom_cooccur_with_hindrance.txt') # We look at all significant pairs with distance threshold
-sig_pairs = co_occur_pair(file_name='./all_data/binom_cooccur_with_hindrance_silencer.txt') # We look at all significant pairs with distance threshold
+sig_pairs = co_occur_pair(file_name='./biogrid/process/liver_enhancer/binom_cooccur_with_hindrance_liver_enhancer.txt')
+fileName = './biogrid/process/liver_enhancer/all_pairs_with_hindrance_evalue_10_motifs_liver_enhancer_pval_0.01.txt'
 
-# for pair in sig_pairs:
-#     if pair[0] == pair[1]:
-#         sig_pairs.remove(pair) # 622 -> 608
+# sig_pairs = co_occur_pair(file_name='./biogrid/process/silencer/binom_cooccur_with_hindrance_silencer.txt')
+# fileName = './biogrid/process/silencer/all_pairs_with_hindrance_evalue_10_motifs_silencer_pval_0.01.txt'
 
 count = 0
 col1 = df[df.columns[0]]
@@ -47,7 +46,7 @@ print(f'Total search number is {len(sig_pairs)}')
 print(f'Total number of co-occurring pairs is {count}')
 print(f'Proportion of co-occurring pairs is {count/len(sig_pairs)}')
 
-with open('all_pairs_with_hindrance_evalue_10_motifs_silencer.txt', 'w') as file:
+with open(fileName, 'w') as file:
     for i in sig_pairs:
         file.write(f'{i[0]}\t{i[1]}\n')
 

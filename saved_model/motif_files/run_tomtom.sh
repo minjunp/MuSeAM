@@ -18,5 +18,5 @@ do
 	output_dir="${tomtom_output}/result_${n}"
 	#mkdir -p ${output_dir}
 	#tomtom [options] <query file> <target file>+
-	tomtom -oc ${output_dir} -evalue -thresh 5 ${pwm_file} ${database_file}
+	tomtom -oc ${output_dir} -evalue -thresh 10 ${pwm_file} ${database_file}
 done

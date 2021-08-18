@@ -67,13 +67,13 @@ class nn_model:
 
         #self.eval()
         #self.cross_val()
-        #self.eval()
-        self.cross_val()
+        # self.eval()
+        #self.cross_val()
         #self.eval_sharpr()
         #self.load_weights()
         #self.fitAll()
         #self.pooling_layer()
-        #self.relu_layer()
+        self.relu_layer()
         #self.pooling_coordinate()
 
     def eval_sharpr(self):
@@ -198,16 +198,16 @@ class nn_model:
 
 
     def eval(self):
-        task = 'classification'
-        # task = 'regression'
+        # task = 'classification'
+        task = 'regression'
 
         fwd_train, fwd_test, rc_train, rc_test, readout_train, readout_test = splitData(self.fasta_file,
                                                                                         self.readout_file,
                                                                                         partitionType = 'leaveOneOut')
 
-        model = MuSeAM_classification.create_model(self)
+        # model = MuSeAM_classification.create_model(self)
         #model = MuSeAM_multiclass.create_model(self)
-        # model = MuSeAM_regression.create_model(self)
+        model = MuSeAM_regression.create_model(self)
         #model = MuSeAM_sumPooling.create_model(self)
 
         callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
@@ -240,7 +240,7 @@ class nn_model:
             motif_weight = model.get_weights()
             dense_weight = motif_weight[2]
             np.savetxt('dense_weights_silencer.txt', dense_weight)
-            #save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_silencer_256')
+            save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_silencer_kernel_12')
 
     def fitAll(self):
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,
@@ -356,7 +356,7 @@ class nn_model:
 
         relu_output = model3.predict({'forward': fwd_fasta, 'reverse': rc_fasta})
         print(relu_output.shape)
-        np.save('./post-hoc/silencer_protein', relu_output)
+        np.save('./post-hoc/silencer_protein_v2', relu_output)
 
     def pooling_coordinate(self):
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,

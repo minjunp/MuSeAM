@@ -10,35 +10,20 @@ import itertools
 from glob import glob
 import keras
 
-maxpool_seq_length = 185
-count = 0
-## allows no overlap & only flanking regions
-null_prob = (420+(135*24))/maxpool_seq_length/maxpool_seq_length # 0.143
+# null_prob = 0.1551 # Liver enhancer
+# null_prob = 0.1306 # Silencer
+null_prob = 0.1314 # DNase I
 
 # generate every pairs without duplicates
 list_of_pairs = list(itertools.combinations(range(512), 2))
 
 ##### Get relu outputs ######
-relu_output = np.load('./all_data/silencer_protein.npy') #(7232, 370, 512)
-# relu_output = np.load('./all_data/relu_output.npy')
-print(relu_output.shape)
-reconstructed_model = keras.models.load_model("../../saved_model/MuSeAM_dnase/dnase_model", compile=False)
-print(reconstructed_model)
-print(len(reconstructed_model))
-sys.exit()
+# relu_output = np.load('./all_data/liver_enhancer_relu.npy') #shape: (2236, 320, 512)
+# relu_output = np.load('./all_data/silencer_relu.npy') #shape: (7232, 378, 512)
+relu_output = np.load('./all_data/dnase_relu.npy') #shape: (10200, 376, 512)
 
-model_weights = reconstructed_model.get_weights()
-print(model_weights[1].shape)
-print(model_weights[2].shape)
-print(model_weights[3].shape)
-print(model_weights[4].shape)
-print(len(model_weights))
-sys.exit()
-dense_weight = model_weights[2]
-dense_bias = model_weights[3]
-##############################
-
-# print(relu_output.shape) # (2236, 320, 512)
+maxpool_length = int(relu_output.shape[1]/2)
+output_name = 'binom_cooccur_with_hindrance_dnase.txt'
 
 pvals = []
 for i in range(len(list_of_pairs)):
@@ -46,11 +31,11 @@ for i in range(len(list_of_pairs)):
     element_a = list_of_pairs[i][0]
     element_b = list_of_pairs[i][1]
 
-    filter_a_fwd = relu_output[:, 0:185, element_a]
-    filter_a_rc = relu_output[:, 185:, element_a][:,::-1] # reverse order on ReLU output
+    filter_a_fwd = relu_output[:, 0:maxpool_length, element_a]
+    filter_a_rc = relu_output[:, maxpool_length:, element_a][:,::-1] # reverse order on ReLU output
 
-    filter_b_fwd = relu_output[:, 0:185, element_b]
-    filter_b_rc = relu_output[:, 185:, element_b][:,::-1]
+    filter_b_fwd = relu_output[:, 0:maxpool_length, element_b]
+    filter_b_rc = relu_output[:, maxpool_length:, element_b][:,::-1]
 
     # Add two vectors (See if they are non-zero)
     filter_a_added = np.add(filter_a_fwd, filter_a_rc)
@@ -82,4 +67,4 @@ for i in range(len(list_of_pairs)):
     pval = stats.binom_test(n_cooccur, n_tot, null_prob, 'greater')
     pvals.append(pval)
 
-np.savetxt('binom_cooccur_with_hindrance_silencer.txt', pvals)
+np.savetxt(output_name, pvals)

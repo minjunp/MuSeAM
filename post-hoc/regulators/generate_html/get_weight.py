@@ -32,6 +32,6 @@ print(repressor_indices)
 # [359  75 411 210 276 347  73 231 361 241]
 # [274 372  55 170  63  67 265 173 236 301]
 
-np.savetxt('motif_silencer_rank.txt', dense_weight_sorted)
+np.savetxt('./silencer/motif_silencer_rank.txt', dense_weight_sorted)
 #np.savetxt('dense_weights.txt', dense_weight)
 #np.savetxt('dense_bias.txt', dense_bias)
