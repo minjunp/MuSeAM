@@ -5,10 +5,10 @@ from keras.layers import Input, Dense, Conv1D, MaxPooling2D, Dropout, Flatten, B
 from tensorflow.keras import backend as K, regularizers
 import keras
 
-def create_model(self):
+def create_model(self, seq_length):
         model = Sequential()
 
-        model.add(Conv1D(120, 5, activation='relu', input_shape=(151, 4)))
+        model.add(Conv1D(120, 5, activation='relu', input_shape=(seq_length, 4)))
         model.add(BatchNormalization())
         model.add(Dropout(0.1))
 

@@ -45,7 +45,7 @@ class ConvolutionLayer(Conv1D):
         self.run_value += 1
         return outputs
 
-def create_model(self):
+def create_model(self, seq_length):
     def coeff_determination(y_true, y_pred):
         SS_res =  K.sum(K.square( y_true-y_pred ))
         SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
@@ -54,8 +54,8 @@ def create_model(self):
         return tf.py_function(spearmanr, [tf.cast(y_pred, tf.float32),
                tf.cast(y_true, tf.float32)], Tout=tf.float32)
 
-    fw_input = keras.Input(shape=(171,4), name = 'forward')
-    rc_input = keras.Input(shape=(171,4), name = 'reverse')
+    fw_input = keras.Input(shape=(seq_length,4), name = 'forward')
+    rc_input = keras.Input(shape=(seq_length,4), name = 'reverse')
 
     customConv = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', use_bias = True)
     fw = customConv(fw_input)

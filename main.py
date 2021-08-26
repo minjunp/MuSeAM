@@ -47,8 +47,7 @@ from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val
 from sklearn.utils import shuffle
 
 #Reproducibility
-#seed = 7163, 413, 184
-seed = random.randint(1,100000)
+# seed = random.randint(1,100000)
 seed = 246
 np.random.seed(seed)
 tf.random.set_seed(seed)
@@ -65,16 +64,15 @@ class nn_model:
         self.alpha = alpha
         self.beta = beta
 
-        #self.eval()
-        #self.cross_val()
         # self.eval()
-        #self.cross_val()
-        #self.eval_sharpr()
-        #self.load_weights()
-        #self.fitAll()
-        #self.pooling_layer()
-        self.relu_layer()
-        #self.pooling_coordinate()
+        # self.cross_val()
+        # self.eval_sharpr()
+        # self.load_weights()
+        # self.fitAll()
+        # self.pooling_coordinate()
+        # self.pooling_layer()
+        # self.relu_layer()
+        self.drop_filter()
 
     def eval_sharpr(self):
         #dtype = 'two-inputs'
@@ -82,11 +80,12 @@ class nn_model:
 
         if dtype == 'two-inputs':
             fwd_train, rc_train, readout_train, fwd_test, rc_test, readout_test, fwd_valid, rc_valid, readout_valid = sharpr(dtype)
-            #model = MuSeAM_sharpr.create_model(self)
-            #model = MuSeAM_skip_connection.create_model(self)
-            #model = MuSeAM_horizontal.create_model(self)
-            model = MuSeAM_averagePooling.create_model(self)
-            #model = sharpr_model.create_model(self)
+            seq_length = fwd_train.shape[1]
+            #model = MuSeAM_sharpr.create_model(self, seq_length)
+            #model = MuSeAM_skip_connection.create_model(self, seq_length)
+            #model = MuSeAM_horizontal.create_model(self, seq_length)
+            model = MuSeAM_averagePooling.create_model(self, seq_length)
+            #model = sharpr_model.create_model(self, seq_length)
 
             model.fit({'forward': fwd_train, 'reverse': rc_train}, readout_train, epochs=self.epochs, batch_size=self.batch_size, validation_data=({'forward': fwd_valid, 'reverse': rc_valid}, readout_valid))
             predictions = model.predict({'forward': fwd_test, 'reverse': rc_test})
@@ -94,6 +93,7 @@ class nn_model:
 
         if dtype == 'one-input':
             train_seq, train_readout, fwd_test, readout_test, fwd_valid, readout_valid = sharpr(dtype)
+            seq_length = fwd_train.shape[1]
             model = MuSeAM_sharpr_single_input.create_model(self)
 
             model.fit(train_seq, train_readout, epochs=self.epochs, batch_size=self.batch_size, validation_data=(fwd_valid, readout_valid))
@@ -118,10 +118,10 @@ class nn_model:
 
         #dtype = 'two-inputs'
         dtype = 'one-input'
-
         if dtype == 'two-inputs':
             fwd_train, rc_train, readout_train, fwd_test, rc_test, readout_test,fwd_valid, rc_valid, readout_valid = sharpr()
-            model = MuSeAM_sharpr.create_model(self)
+            seq_length = fwd_train.shape[1]
+            model = MuSeAM_sharpr.create_model(self, seq_length)
             #print(reconstructed_model.layers[2].get_weights()[0].shape)
             filters = reconstructed_model.layers[2].get_weights()
             model.layers[2].set_weights(filters)
@@ -130,7 +130,8 @@ class nn_model:
             predictions = model.predict({'forward': fwd_test, 'reverse': rc_test})
         if dtype == 'one-input':
             train_seq, train_readout, fwd_test, readout_test, fwd_valid, readout_valid = sharpr(dtype)
-            model = MuSeAM_sharpr_single_input.create_model(self)
+            seq_length = fwd_train.shape[1]
+            model = MuSeAM_sharpr_single_input.create_model(self, seq_length)
             filters = reconstructed_model.layers[2].get_weights()
             model.layers[1].set_weights(filters)
 
@@ -159,10 +160,10 @@ class nn_model:
                                                                                         partitionType = 'leaveOneOut',
                                                                                         taskType = 'multiclass_classification')
 
-
-        model = MuSeAM_classification.create_model(self)
-        #model = MuSeAM_regression.create_model(self)
-        #model = MuSeAM_sumPooling.create_model(self)
+        seq_length = fwd_train.shape[1]
+        model = MuSeAM_classification.create_model(self, seq_length)
+        #model = MuSeAM_regression.create_model(self, seq_length)
+        #model = MuSeAM_sumPooling.create_model(self, seq_length)
 
         class_weights = get_class_weights(Y_train_ohe=Y_train_ohe)
 
@@ -204,11 +205,12 @@ class nn_model:
         fwd_train, fwd_test, rc_train, rc_test, readout_train, readout_test = splitData(self.fasta_file,
                                                                                         self.readout_file,
                                                                                         partitionType = 'leaveOneOut')
+        seq_length = fwd_train.shape[1]
 
-        # model = MuSeAM_classification.create_model(self)
-        #model = MuSeAM_multiclass.create_model(self)
-        model = MuSeAM_regression.create_model(self)
-        #model = MuSeAM_sumPooling.create_model(self)
+        # model = MuSeAM_classification.create_model(self, seq_length)
+        #model = MuSeAM_multiclass.create_model(self, seq_length)
+        model = MuSeAM_regression.create_model(self, seq_length)
+        #model = MuSeAM_sumPooling.create_model(self, seq_length)
 
         callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
         model.fit({'forward': fwd_train, 'reverse': rc_train}, readout_train, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0, callbacks = [callback])
@@ -243,15 +245,20 @@ class nn_model:
             save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_silencer_kernel_12')
 
     def fitAll(self):
+        # task = 'classification'
+        task = 'regression'
+
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,
                                                 self.readout_file,
                                                 'fitAll')
-        model = MuSeAM_regression.create_model(self)
-        model.fit({'forward': fwd_fasta, 'reverse': rc_fasta}, readout, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
-        history = model.evaluate({'forward': fwd_fasta, 'reverse': rc_fasta}, readout)
-        print(history) ## [0.11433766782283783, 0.5864769220352173, 0.7424215078353882]
+        seq_length = fwd_fasta.shape[1]
 
-        save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_synthetic_removed')
+        if task == 'regression':
+            model = MuSeAM_regression.create_model(self, seq_length)
+            # callback = EarlyStopping(monitor='spearman_fn', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
+            model.fit({'forward': fwd_fasta, 'reverse': rc_fasta}, readout, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
+            history = model.evaluate({'forward': fwd_fasta, 'reverse': rc_fasta}, readout)
+            save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_silencer')
 
     def cross_val(self):
         #task = 'classification'
@@ -260,6 +267,8 @@ class nn_model:
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,
                                                 self.readout_file,
                                                 partitionType = '10Fold')
+        seq_length = fwd_fasta.shape[1]
+
         # initialize metrics to save values
         trainAUCs = []
         testAUCs = []
@@ -278,7 +287,7 @@ class nn_model:
 
             if task == 'classification':
                 model = None
-                model = MuSeAM_classification.create_model(self)
+                model = MuSeAM_classification.create_model(self, seq_length)
 
                 # Early stopping
                 callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
@@ -293,11 +302,11 @@ class nn_model:
                 testAUCs.append(testAUC)
             if task == 'regression':
                 model = None
-                # model = MuSeAM_sumPooling.create_model(self)
-                # model = MuSeAM_alpha.create_model(self)
-                model = MuSeAM_regression.create_model(self)
-                # model = deepsea_model.create_model(self)
-                # model = deepsea_rnn_model.create_model(self)
+                # model = MuSeAM_sumPooling.create_model(self, seq_length)
+                # model = MuSeAM_alpha.create_model(self, seq_length)
+                model = MuSeAM_regression.create_model(self, seq_length)
+                # model = deepsea_model.create_model(self, seq_length)
+                # model = deepsea_rnn_model.create_model(self, seq_length)
 
                 # model.fit(fwdTrain, readoutTrain, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
                 # history = model.evaluate(fwdTest, readoutTest)
@@ -336,7 +345,8 @@ class nn_model:
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,
                                                 self.readout_file,
                                                 'fitAll')
-        model, model2, model3 = MuSeAM_regression_pooling_layer.create_model(self)
+        seq_length = fwd_fasta.shape[1]
+        model, model2, model3 = MuSeAM_regression_pooling_layer.create_model(self, seq_length)
         model.fit({'forward': fwd_fasta, 'reverse': rc_fasta}, readout, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
         pooling_output = model2.predict({'forward': fwd_fasta, 'reverse': rc_fasta})
         np.savetxt('./post-hoc/silencer_protein/pooling_output.txt', pooling_output)
@@ -346,17 +356,15 @@ class nn_model:
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,
                                                 self.readout_file,
                                                 'fitAll')
-        model, model2, model3 = MuSeAM_regression_pooling_layer.create_model(self)
+        seq_length = fwd_fasta.shape[1]
+        model, model2, model3 = MuSeAM_regression_pooling_layer.create_model(self, seq_length)
 
-        callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
-        model.fit({'forward': fwd_fasta, 'reverse': rc_fasta}, readout, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0, callbacks=[callback])
-
-        #pooling_output = model2.predict({'forward': fwd_fasta, 'reverse': rc_fasta})
-        #np.savetxt('./post-hoc/protein-protein/pooling_output.txt', pooling_output)
+        # callback = EarlyStopping(monitor='loss', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
+        model.fit({'forward': fwd_fasta, 'reverse': rc_fasta}, readout, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
 
         relu_output = model3.predict({'forward': fwd_fasta, 'reverse': rc_fasta})
         print(relu_output.shape)
-        np.save('./post-hoc/silencer_protein_v2', relu_output)
+        np.save('./post-hoc/liver_enhancer_synthetic_removed_epoch_40_relu', relu_output)
 
     def pooling_coordinate(self):
         fwd_fasta, rc_fasta, readout = splitData(self.fasta_file,
@@ -364,8 +372,11 @@ class nn_model:
                                                 'fitAll')
 
         # Get maxpool hitting coordinates
-        os.makedirs('./saved_model/MuSeAM_regression/maxpool_index')
-        dir = './saved_model/MuSeAM_regression/motif_files/'
+        # os.makedirs('./saved_model/MuSeAM_regression_liver_enhancer/maxpool_index')
+        # dir = './saved_model/MuSeAM_regression_liver_enhancer/motif_files/'
+        os.makedirs('./saved_model/MuSeAM_regression_silencer/maxpool_index')
+        dir = './saved_model/MuSeAM_regression_silencer/motif_files/'
+
         files = []
         for file in os.listdir(dir):
             if file.startswith("filter"):
@@ -416,10 +427,46 @@ class nn_model:
                 start_position.append(ind)
 
             end_position = np.add(self.kernel_size-1, start_position)
+
             # reshape in order to concatenate... originally (512,) --> (512,1)
             start_position = np.reshape(start_position, (self.filters,1))
             end_position = np.reshape(end_position, (self.filters,1))
 
             concat_position = np.concatenate((start_position,end_position), axis=1)
 
-            np.savetxt(f'./saved_model/MuSeAM_regression/maxpool_index/maxpool_{"{0:0=3d}".format(i)}.txt', concat_position)
+            # np.savetxt(f'./saved_model/MuSeAM_regression_liver_enhancer/maxpool_index/maxpool_{"{0:0=3d}".format(i)}.txt', concat_position)
+            np.savetxt(f'./saved_model/MuSeAM_regression_silencer/maxpool_index/maxpool_{"{0:0=3d}".format(i)}.txt', concat_position)
+
+    def drop_filter(self):
+        # first train the model
+        task = 'regression'
+        fwd_fasta, rc_fasta, readout = splitData(self.fasta_file, self.readout_file, 'fitAll')
+        seq_length = fwd_fasta.shape[1]
+
+        if task == 'regression':
+            perfs = [] # performances
+            model = MuSeAM_regression.create_model(self, seq_length)
+            # callback = EarlyStopping(monitor='spearman_fn', min_delta=0.001, patience=3, verbose=0, mode='auto', baseline=None, restore_best_weights=False)
+            model.fit({'forward': fwd_fasta, 'reverse': rc_fasta}, readout, epochs=self.epochs, batch_size=self.batch_size, validation_split=0.0)
+
+            history = model.evaluate({'forward': fwd_fasta, 'reverse': rc_fasta}, readout)
+            baseline = history[2]
+            motif_weight = model.get_weights()
+            W = motif_weight[0].copy()
+
+            for i in range(W.shape[2]):
+                new_weight = W.copy()
+                new_weight[:,:,i] = np.zeros((12, 4))
+
+                # Loop over by setting each filter with zeros and predicting with new set of features
+                motif_weight[0] = new_weight
+                model.set_weights(motif_weight)
+
+                history = model.evaluate({'forward': fwd_fasta, 'reverse': rc_fasta}, readout)
+                perf = history[-1] # Spearman rank correlation
+
+                # Save performance change (delta)
+                delta = baseline - perf
+                perfs.append(delta)
+            np.savetxt('liver_enhancer_delta.txt', perfs)
+            # np.savetxt('silencer_delta.txt', perfs)

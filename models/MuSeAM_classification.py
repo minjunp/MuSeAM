@@ -43,9 +43,9 @@ class ConvolutionLayer(Conv1D):
         self.run_value += 1
         return outputs
 
-def create_model(self):
-    fw_input = keras.Input(shape=(199,4), name = 'forward')
-    rc_input = keras.Input(shape=(199,4), name = 'reverse')
+def create_model(self, seq_length):
+    fw_input = keras.Input(shape=(seq_length,4), name = 'forward')
+    rc_input = keras.Input(shape=(seq_length,4), name = 'reverse')
 
     customConv = ConvolutionLayer(filters=self.filters, kernel_size=self.kernel_size, data_format='channels_last', use_bias = True)
     fw = customConv(fw_input)

@@ -7,11 +7,11 @@ import sys
 df = pd.read_csv('BIOGRID-ALL-3.5.186.tab2.txt', sep="\t", header=0)
 df = df[df.columns[2:6]]
 
-sig_pairs = co_occur_pair(file_name='./biogrid/process/liver_enhancer/binom_cooccur_with_hindrance_liver_enhancer.txt')
-fileName = './biogrid/process/liver_enhancer/all_pairs_with_hindrance_evalue_10_motifs_liver_enhancer_pval_0.01.txt'
+# sig_pairs = co_occur_pair(file_name='./biogrid/process/liver_enhancer/binom_cooccur_with_hindrance_liver_enhancer.txt')
+# fileName = './biogrid/process/liver_enhancer/all_pairs_with_hindrance_evalue_10_motifs_liver_enhancer_pval_0.01.txt'
 
-# sig_pairs = co_occur_pair(file_name='./biogrid/process/silencer/binom_cooccur_with_hindrance_silencer.txt')
-# fileName = './biogrid/process/silencer/all_pairs_with_hindrance_evalue_10_motifs_silencer_pval_0.01.txt'
+sig_pairs = co_occur_pair(file_name='./biogrid/process/silencer/binom_cooccur_with_hindrance_silencer.txt')
+fileName = './biogrid/process/silencer/all_pairs_with_hindrance_evalue_10_motifs_silencer_pval_0.01.txt'
 
 count = 0
 col1 = df[df.columns[0]]

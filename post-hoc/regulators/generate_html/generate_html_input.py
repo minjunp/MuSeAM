@@ -50,18 +50,18 @@ def process_data(fwd_logos, rc_logos, rankfile, tomtom_dir_path, output_name, de
     # save to .csv file
     df.to_csv(output_name, sep=' ', index=False, header=None)
 
-fwd_logos = '/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_liver_enhancer/motif_files/motif_files/logos/fwd*.png'
-rc_logos = '/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_liver_enhancer/motif_files/motif_files/logos/rc*.png'
-rankfile = '/Users/minjunpark/Documents/MuSeAM/post-hoc/regulators/generate_html/liver_enhancer/motif_rank.txt'
-tomtom_dir_path = '/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_liver_enhancer/motif_files/motif_files/tomtom_outputs_evalue_10/result*/tomtom.tsv'
-output_name = 'html_input_evalue_10_liver_enhancer.txt'
-dense_weights_file = '/Users/minjunpark/Documents/MuSeAM/post-hoc/regulators/generate_html/liver_enhancer/dense_weights.txt'
-process_data(fwd_logos, rc_logos, rankfile, tomtom_dir_path, output_name, dense_weights_file)
-
-# fwd_logos = '/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_silencer/motif_files/motif_files/logos/fwd*.png'
-# rc_logos = '/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_silencer/motif_files/motif_files/logos/rc*.png'
-# rankfile = '/Users/minjunpark/Documents/MuSeAM/post-hoc/regulators/generate_html/silencer/motif_silencer_rank.txt'
-# tomtom_dir_path = '/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_silencer/motif_files/motif_files/tomtom_outputs_evalue_10/result*/tomtom.tsv'
-# output_name = 'html_input_evalue_10_silencer.txt'
-# dense_weights_file = '/Users/minjunpark/Documents/MuSeAM/post-hoc/regulators/generate_html/silencer/dense_weights_silencer.txt'
+# fwd_logos = '/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_liver_enhancer/motif_files/motif_files/logos/fwd*.png'
+# rc_logos = '/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_liver_enhancer/motif_files/motif_files/logos/rc*.png'
+# rankfile = '/Users/minjunpark/Documents/MuSeAM/post-hoc/regulators/generate_html/liver_enhancer/motif_rank.txt'
+# tomtom_dir_path = '/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_liver_enhancer/motif_files/motif_files/tomtom_outputs_evalue_10/result*/tomtom.tsv'
+# output_name = 'html_input_evalue_10_liver_enhancer.txt'
+# dense_weights_file = '/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_liver_enhancer/dense_weights.txt'
 # process_data(fwd_logos, rc_logos, rankfile, tomtom_dir_path, output_name, dense_weights_file)
+
+fwd_logos = '/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_silencer/motif_files/motif_files/logos/fwd*.png'
+rc_logos = '/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_silencer/motif_files/motif_files/logos/rc*.png'
+rankfile = '/Users/minjunpark/Documents/MuSeAM/post-hoc/regulators/generate_html/silencer/motif_rank.txt'
+tomtom_dir_path = '/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_silencer/motif_files/motif_files/tomtom_outputs_evalue_10/result*/tomtom.tsv'
+output_name = 'html_input_evalue_10_silencer.txt'
+dense_weights_file = '/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_silencer/dense_weights.txt'
+process_data(fwd_logos, rc_logos, rankfile, tomtom_dir_path, output_name, dense_weights_file)

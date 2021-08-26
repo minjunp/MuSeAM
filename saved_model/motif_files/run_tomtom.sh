@@ -3,7 +3,7 @@
 database_file="$(pwd)/HOCOMOCOv11_full_HUMAN_mono_meme_format.meme"
 pwms="$(pwd)/pwms"
 
-tomtom_output="$(pwd)/tomtom_outputs"
+tomtom_output="$(pwd)/tomtom_outputs_evalue_10"
 if [ -d ${tomtom_output} ]
 then
 	rm -rf ${tomtom_output}

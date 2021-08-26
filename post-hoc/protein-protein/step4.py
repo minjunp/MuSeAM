@@ -30,16 +30,16 @@ def co_occur_pair(file_name='binom_cooccur.txt'):
         pair_b_num = pair[1] # maxpool output for the SECOND pair
 
         # Get TOMTOM info for each filter
-        tomtom_a_tsv = pd.read_csv(f'/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_liver_enhancer/motif_files/motif_files/tomtom_outputs_evalue_10/result_{"{0:0=3d}".format(pair_a_num)}/tomtom.tsv', sep='\t')
-        # tomtom_a_tsv = pd.read_csv(f'/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_silencer/motif_files/motif_files/tomtom_outputs_evalue_10/result_{"{0:0=3d}".format(pair_a_num)}/tomtom.tsv', sep='\t')
+        # tomtom_a_tsv = pd.read_csv(f'/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_liver_enhancer/motif_files/motif_files/tomtom_outputs_evalue_10/result_{"{0:0=3d}".format(pair_a_num)}/tomtom.tsv', sep='\t')
+        tomtom_a_tsv = pd.read_csv(f'/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_silencer/motif_files/motif_files/tomtom_outputs_evalue_10/result_{"{0:0=3d}".format(pair_a_num)}/tomtom.tsv', sep='\t')
 
         tomtom_a = tomtom_a_tsv['Target_ID'][0]
         if isinstance(tomtom_a, float): # isnan does not work... so check the instance type
             continue
         tomtom_match_a = tomtom_a[0:tomtom_a.find('_')]
 
-        tomtom_b_tsv = pd.read_csv(f'/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_liver_enhancer/motif_files/motif_files/tomtom_outputs_evalue_10/result_{"{0:0=3d}".format(pair_b_num)}/tomtom.tsv', sep='\t')
-        # tomtom_b_tsv = pd.read_csv(f'/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_silencer/motif_files/motif_files/tomtom_outputs_evalue_10/result_{"{0:0=3d}".format(pair_b_num)}/tomtom.tsv', sep='\t')
+        # tomtom_b_tsv = pd.read_csv(f'/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_liver_enhancer/motif_files/motif_files/tomtom_outputs_evalue_10/result_{"{0:0=3d}".format(pair_b_num)}/tomtom.tsv', sep='\t')
+        tomtom_b_tsv = pd.read_csv(f'/Users/minjunpark/Documents/MuSeAM/saved_model/MuSeAM_regression_silencer/motif_files/motif_files/tomtom_outputs_evalue_10/result_{"{0:0=3d}".format(pair_b_num)}/tomtom.tsv', sep='\t')
 
         tomtom_b = tomtom_b_tsv['Target_ID'][0]
         if isinstance(tomtom_b, float): # isnan does not work... so check the instance type

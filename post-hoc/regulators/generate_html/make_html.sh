@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Example: ./make_html.sh < ./silencer/html_input_evalue_10_silencer.txt > ./silencer/evalue_10.html
 # ./make_html.sh < ./liver_enhancer/html_input_evalue_10_liver_enhancer.txt > ./liver_enhancer/evalue_10.html
+# ./make_html.sh < ./silencer/html_input_evalue_10_silencer.txt > ./silencer/evalue_10.html
+
 # The script requires a space-delimited data file to parse into an html table.
 # It does not automatically create a header row.
 width="150\%"

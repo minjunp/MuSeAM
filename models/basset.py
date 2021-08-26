@@ -6,7 +6,7 @@ import keras
 from tensorflow.keras import backend as K, regularizers
 from scipy.stats import spearmanr, pearsonr
 
-def create_model(self):
+def create_model(self, seq_length):
         def coeff_determination(y_true, y_pred):
             SS_res =  K.sum(K.square( y_true-y_pred ))
             SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
@@ -18,7 +18,7 @@ def create_model(self):
         model = model = Sequential()
 
         #First Conv1D
-        model.add(Conv1D(filters=300, kernel_size=19, input_shape=(200,4)))
+        model.add(Conv1D(filters=300, kernel_size=19, input_shape=(seq_length,4)))
 
         model.add(BatchNormalization())
         model.add(ReLU())
