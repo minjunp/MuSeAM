@@ -10,3 +10,5 @@ data/simulated_data/
 saved_model/
 post-hoc/
 figs/
+
+v2/regression//model/saved_model/sharpr
