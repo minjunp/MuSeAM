@@ -20,7 +20,6 @@ import matplotlib.pyplot as plt
 from sklearn.utils import shuffle
 import random
 from sklearn.preprocessing import MinMaxScaler
-from saved_model import save_model
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -157,7 +156,6 @@ def eval(parameters,fasta_file,readout_file):
     history2 = model.evaluate(forward_shuffle, readout_shuffle)
     pred = model.predict(forward_shuffle)
     model.save('./saved_model/sharpr')
-
     print(history2)
 
 def cros_eval(parameters,fasta_file,readout_file):
