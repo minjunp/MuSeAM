@@ -46,6 +46,8 @@ from sklearn.metrics import r2_score
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score, KFold
 from sklearn.utils import shuffle
 
+import matplotlib.pyplot as plt
+
 #Reproducibility
 # seed = random.randint(1,100000)
 seed = 246
@@ -64,7 +66,7 @@ class nn_model:
         self.alpha = alpha
         self.beta = beta
 
-        # self.eval()
+        self.eval()
         # self.cross_val()
         # self.eval_sharpr()
         # self.load_weights()
@@ -72,7 +74,7 @@ class nn_model:
         # self.pooling_coordinate()
         # self.pooling_layer()
         # self.relu_layer()
-        self.drop_filter()
+        # self.drop_filter()
 
     def eval_sharpr(self):
         #dtype = 'two-inputs'
@@ -241,8 +243,18 @@ class nn_model:
 
             motif_weight = model.get_weights()
             dense_weight = motif_weight[2]
-            np.savetxt('dense_weights_silencer.txt', dense_weight)
-            save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_silencer_kernel_12')
+            # np.savetxt('dense_weights_silencer.txt', dense_weight)
+            # save_model.save_model(self, model, alpha=120, path='./saved_model/MuSeAM_regression_silencer_kernel_12')
+
+        preds = model.predict({'forward': fwd_test, 'reverse': rc_test})
+        plt.scatter(readout_test, preds, marker='o', s=1)
+        plt.xlabel('Actual')
+        plt.ylabel('Predicted')
+        plt.title('MuSeAM silencer scatter plot')
+        plt.savefig('./plot/scatterplot_silencer.pdf')
+        # plt.title('MuSeAM liver enhancer scatter plot')
+        # plt.savefig('./plot/scatterplot_liver_enhancer.pdf')
+
 
     def fitAll(self):
         # task = 'classification'
