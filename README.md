@@ -7,12 +7,6 @@
 *** https://www.markdownguide.org/basic-syntax/#reference-style-links
 -->
 
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-
 ```sh
 
                        __  __       ____          _    __  __
@@ -63,9 +57,9 @@ conda activate museam
 
 ```
 
-## Demo
+## How to run the code
 
-Running model on example data
+Running model on default (liver enhancer) data.
 
 ```sh
 python train.py -t regression
