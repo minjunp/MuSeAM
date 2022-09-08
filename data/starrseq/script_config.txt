@@ -1,9 +1,0 @@
-# Load modules
-module load bedtools/2.29.2
-
-# Reference genome
-Genome="/mount/samee/Genomes/hg19_ucsc/hg19.fa"
-
-# List of bedtools for getfasta, or list of DMR files for DMR processing
-Blist="GSE151064_starrseq-lncap-constitutivly-active-regions_v2.bed GSE151064_starrseq-lncap-induced-regions_v2.bed GSE151064_starrseq-lncap-nonactive-regions_v2.bed "
-

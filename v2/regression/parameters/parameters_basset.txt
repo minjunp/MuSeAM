@@ -1,7 +1,0 @@
-epochs 30
-batch_size 59
-loss_func mse
-optimizer adam
-scaling no_scaling
-validation_split 0.0
-model_name basset
